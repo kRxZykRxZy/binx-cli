@@ -1,58 +1,37 @@
 #include "binx/cli/output.hpp"
 #include "binx/formats/detect.hpp"
 #include "binx/version.hpp"
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 namespace binx {
 namespace {
-std::string esc(const std::string&s){std::string o;for(char c:s){const auto u=static_cast<unsigned char>(c);if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\";
-else if(u<0x20){std::ostringstream x;x<<"\\u"<<std::hex<<std::setw(4)<<std::setfill('0')<<static_cast<unsigned int>(u);o+=x.str();}else o+=c;}return o;}
-std::string hex64(std::uint64_t v){std::ostringstream s;s<<"0x"<<std::hex<<std::uppercase<<v;return s.str();}
+std::string esc(const std::string&s){std::string o;for(char c:s){const auto u=static_cast<unsigned char>(c);if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\";else if(u<0x20){std::ostringstream x;x<<"\\u"<<std::hex<<std::setw(4)<<std::setfill('0')<<unsigned(u);o+=x.str();}else o+=c;}return o;}
+std::string hx(std::uint64_t v){std::ostringstream s;s<<"0x"<<std::hex<<std::uppercase<<v;return s.str();}
+std::string flags(const PESection&s){std::string r;r+=s.readable?'R':'-';r+=s.writable?'W':'-';r+=s.executable?'X':'-';return r;}
+std::string join_json(const std::vector<std::string>&v){std::ostringstream o;o<<"[";for(std::size_t i=0;i<v.size();++i){if(i)o<<",";o<<"\""<<esc(v[i])<<"\"";}o<<"]";return o.str();}
+void diagnostic_json(std::ostringstream&o,const Diagnostic&d){o<<"{\"severity\":\""<<diagnostic_severity_name(d.severity)<<"\",\"code\":\""<<esc(d.code)<<"\",\"component\":\""<<esc(d.component)<<"\"";if(d.file_offset)o<<",\"file_offset\":\""<<hx(*d.file_offset)<<"\"";if(d.rva)o<<",\"rva\":\""<<hx(*d.rva)<<"\"";o<<",\"message\":\""<<esc(d.message)<<"\"}";}
+std::string generic_json(const BinaryFile&f){const auto&m=f.metadata();std::ostringstream o;o<<"{\n  \"schema_version\":1,\n  \"file\":{\"name\":\""<<esc(f.path().filename().string())<<"\",\"size\":"<<m.file_size<<"},\n  \"format\":\""<<format_name(m.format)<<"\",\n  \"architecture\":\""<<architecture_name(m.architecture)<<"\",\n  \"endianness\":\""<<endianness_name(m.endianness)<<"\",\n  \"platform\":\""<<esc(m.platform)<<"\"";if(m.entry_point)o<<",\n  \"entry_point\":\""<<hx(*m.entry_point)<<"\"";if(m.image_base)o<<",\n  \"image_base\":\""<<hx(*m.image_base)<<"\"";o<<"\n}\n";return o.str();}
 }
 std::string format_help(){return std::string("BinX - Binary Inspector v")+BINX_VERSION+
 "\n\nUsage:\n  binx <command> <file> [options]\n\n"
-"Commands:\n  info       Show concise binary metadata\n  inspect    Inspect binary metadata\n  hash       Calculate MD5, SHA-1 and SHA-256\n  version    Show BinX version\n  help       Show this help\n\n"
+"Commands:\n  info        Show concise metadata\n  inspect     Run full PE inspection\n  sections    Show PE sections\n  imports     Show PE imports\n  exports     Show PE exports\n  resources   Show PE resources\n  relocations Show PE base relocations\n  hash        Calculate MD5, SHA-1 and SHA-256\n  version     Show BinX version\n  help        Show this help\n\n"
 "Options:\n  --json     Emit machine-readable JSON\n  --output   Write output to a file\n  --verbose  Enable diagnostic output\n  --quiet    Suppress normal output\n  --help     Show help\n";}
 std::string format_version(){return std::string("BinX Binary Inspector ")+BINX_VERSION+"\n";}
-std::string format_info(const BinaryFile&f,bool json,bool detailed){
- const auto&m=f.metadata();
- if(json){
-  std::ostringstream o;
-  o<<"{\n  \"file\": {\"name\": \"" << esc(f.path().filename().string()) << "\", \"size\": "<<m.file_size<<"},\n";
-  o<<"  \"format\": \"" << format_name(m.format) << "\",\n";
-  o<<"  \"architecture\": \"" << architecture_name(m.architecture) << "\",\n";
-  o<<"  \"endianness\": \"" << endianness_name(m.endianness) << "\",\n";
-  o<<"  \"platform\": \"" << esc(m.platform) << "\",\n";
-  o<<"  \"valid\": "<<(m.valid?"true":"false");
-  if(m.entry_point)o<<",\n  \"entry_point\": \"" << hex64(*m.entry_point) << "\"";
-  if(m.entry_point_rva)o<<",\n  \"entry_point_rva\": \"" << hex64(*m.entry_point_rva) << "\"";
-  if(m.image_base)o<<",\n  \"image_base\": \"" << hex64(*m.image_base) << "\"";
-  if(m.raw_machine)o<<",\n  \"machine\": "<<*m.raw_machine;
-  if(m.section_count)o<<",\n  \"section_count\": "<<*m.section_count;
-  if(m.image_size)o<<",\n  \"image_size\": "<<*m.image_size;
-  if(m.headers_size)o<<",\n  \"headers_size\": "<<*m.headers_size;
-  if(m.subsystem)o<<",\n  \"subsystem\": "<<*m.subsystem;
-  if(m.timestamp)o<<",\n  \"timestamp\": "<<*m.timestamp;
-  if(!m.diagnostic.empty())o<<",\n  \"diagnostic\": \"" << esc(m.diagnostic) << "\"";
-  o<<"\n}\n";return o.str();
- }
- std::ostringstream o;
- o<<"BinX Binary Inspector v"<<BINX_VERSION<<"\n\n";
- o<<"FILE\n  Name:          "<<f.path().filename().string()<<"\n  Size:          "<<m.file_size<<" bytes\n\n";
- o<<"FORMAT\n  Type:          "<<format_name(m.format)<<"\n  Architecture:  "<<architecture_name(m.architecture)<<"\n  Endianness:    "<<endianness_name(m.endianness)<<"\n  Platform:      "<<(m.platform.empty()?"unknown":m.platform)<<"\n\n";
- o<<"IMAGE\n  Entry point:   "<<(m.entry_point?hex64(*m.entry_point):"n/a")<<"\n";
- if(m.entry_point_rva)o<<"  Entry RVA:     "<<hex64(*m.entry_point_rva)<<"\n";
- o<<"  Image base:    "<<(m.image_base?hex64(*m.image_base):"n/a")<<"\n";
- if(m.image_size)o<<"  Image size:    "<<*m.image_size<<" bytes\n";
- if(m.headers_size)o<<"  Headers size:  "<<*m.headers_size<<" bytes\n";
- if(m.section_count)o<<"  Sections:      "<<*m.section_count<<"\n";
- if(m.raw_machine)o<<"  Machine:       "<<*m.raw_machine<<"\n";
- if(m.subsystem)o<<"  Subsystem:     "<<*m.subsystem<<"\n";
- if(m.timestamp)o<<"  Timestamp:     "<<*m.timestamp<<"\n";
- o<<"\nVALIDATION\n  Status:         "<<(m.valid?"valid/readable":"invalid")<<"\n";
- if(!m.diagnostic.empty())o<<"  Detail:         "<<m.diagnostic<<"\n";
- if(detailed)o<<"\nSAFETY\n  Input handling: read-only\n  Execution:      input files are never executed or loaded\n";
- return o.str();
+std::string format_info(const BinaryFile&f,bool json,bool detailed){if(json)return generic_json(f);const auto&m=f.metadata();std::ostringstream o;o<<"BinX Binary Inspector v"<<BINX_VERSION<<"\n\nFILE\n  Name:          "<<f.path().filename().string()<<"\n  Size:          "<<m.file_size<<" bytes\n\nFORMAT\n  Type:          "<<format_name(m.format)<<"\n  Architecture:  "<<architecture_name(m.architecture)<<"\n  Endianness:    "<<endianness_name(m.endianness)<<"\n  Platform:      "<<(m.platform.empty()?"unknown":m.platform)<<"\n\nIMAGE\n  Entry point:   "<<(m.entry_point?hx(*m.entry_point):"n/a")<<"\n  Image base:    "<<(m.image_base?hx(*m.image_base):"n/a")<<"\n";if(m.section_count)o<<"  Sections:      "<<*m.section_count<<"\n";if(detailed)o<<"\nNOTE\n  Use PE-specific inspect output when the input is a PE image.\n";return o.str();}
+std::string format_pe_command(const PEImage&im,const std::string&cmd,bool json,bool detailed){
+    if(json){
+        std::ostringstream o;o<<"{\n  \"schema_version\":2,\n  \"format\":\""<<(im.headers.optional.pe_class==PEClass::PE64?"PE32+":"PE32")<<"\",\n  \"headers\":{\"machine\":"<<im.headers.coff.machine<<",\"machine_name\":\""<<machine_name(im.headers.coff.machine)<<"\",\"timestamp\":"<<im.headers.coff.timestamp<<",\"characteristics\":"<<im.headers.coff.characteristics<<",\"characteristic_names\":"<<join_json(coff_characteristic_names(im.headers.coff.characteristics))<<",\"image_base\":\""<<hx(im.headers.optional.image_base)<<"\",\"entry_point_rva\":\""<<hx(im.headers.optional.address_of_entry_point)<<"\",\"entry_point_file_offset\":"<<(im.headers.entry_point_file_offset?("\""+hx(*im.headers.entry_point_file_offset)+"\""):"null")<<",\"section_alignment\":"<<im.headers.optional.section_alignment<<",\"file_alignment\":"<<im.headers.optional.file_alignment<<",\"size_of_image\":"<<im.headers.optional.size_of_image<<",\"size_of_headers\":"<<im.headers.optional.size_of_headers<<",\"subsystem\":"<<im.headers.optional.subsystem<<",\"subsystem_name\":\""<<subsystem_name(im.headers.optional.subsystem)<<"\",\"dll_characteristics\":"<<im.headers.optional.dll_characteristics<<",\"dll_characteristic_names\":"<<join_json(dll_characteristic_names(im.headers.optional.dll_characteristics))<<"},\n  \"sections\":[";
+        for(std::size_t i=0;i<im.sections.size();++i){if(i)o<<",";const auto&s=im.sections[i];o<<"{\"index\":"<<s.index<<",\"name\":\""<<esc(s.name)<<"\",\"virtual_size\":"<<s.virtual_size<<",\"virtual_address\":\""<<hx(s.virtual_address)<<"\",\"raw_size\":"<<s.raw_size<<",\"raw_pointer\":\""<<hx(s.raw_pointer)<<"\",\"characteristics\":"<<s.characteristics<<",\"flags\":\""<<flags(s)<<"\"}";}
+        o<<"],\n  \"imports\":[";if(im.imports){for(std::size_t i=0;i<im.imports->modules.size();++i){if(i)o<<",";const auto&m=im.imports->modules[i];o<<"{\"dll\":\""<<esc(m.dll_name)<<"\",\"lookup_rva\":\""<<hx(m.lookup_rva)<<"\",\"iat_rva\":\""<<hx(m.iat_rva)<<"\",\"symbols\":[";for(std::size_t j=0;j<m.symbols.size();++j){if(j)o<<",";const auto&s=m.symbols[j];o<<"{\"name\":"<<(s.name?"\""+esc(*s.name)+"\"":"null")<<",\"ordinal\":"<<(s.ordinal?std::to_string(*s.ordinal):"null")<<",\"hint\":"<<(s.hint?std::to_string(*s.hint):"null")<<",\"lookup_rva\":\""<<hx(s.lookup_rva)<<"\",\"iat_rva\":\""<<hx(s.iat_rva)<<"\"}";}o<<"]}";}}o<<"],\n  \"exports\":[";if(im.exports){for(std::size_t i=0;i<im.exports->functions.size();++i){if(i)o<<",";const auto&f=im.exports->functions[i];o<<"{\"ordinal\":"<<f.ordinal<<",\"rva\":\""<<hx(f.rva)<<"\",\"name\":"<<(f.name?"\""+esc(*f.name)+"\"":"null")<<",\"forwarder\":"<<(f.forwarder?"\""+esc(*f.forwarder)+"\"":"null")<<"}";}}o<<"],\n  \"relocations\":[";if(im.relocations){for(std::size_t i=0;i<im.relocations->blocks.size();++i){if(i)o<<",";const auto&b=im.relocations->blocks[i];o<<"{\"page_rva\":\""<<hx(b.page_rva)<<"\",\"block_size\":"<<b.block_size<<",\"entries\":"<<b.entries.size()<<"}";}}o<<"],\n  \"resources\":[";if(im.resources){for(std::size_t i=0;i<im.resources->items.size();++i){if(i)o<<",";const auto&r=im.resources->items[i];o<<"{\"path\":[";for(std::size_t j=0;j<r.path.size();++j){if(j)o<<",";o<<"\""<<esc(r.path[j])<<"\"";}o<<"],\"language\":"<<r.language<<",\"data_rva\":\""<<hx(r.data_rva)<<"\",\"data_size\":"<<r.data_size<<",\"code_page\":"<<r.code_page<<",\"file_offset\":"<<(r.file_offset?"\""+hx(*r.file_offset)+"\"":"null")<<"}";}}o<<"],\n  \"tls\":{\"status\":\""<<pe_status_name(im.tls_status)<<"\",\"callbacks\":"<<(im.tls?im.tls->callbacks.size():0)<<",\"address_of_callbacks\":\""<<(im.tls?hx(im.tls->address_of_callbacks_va):"")<<"\"},\n  \"debug\":{\"status\":\""<<pe_status_name(im.debug_status)<<"\",\"entries\":"<<im.debug_entries.size()<<"},\n  \"statuses\":{\"headers\":\""<<pe_status_name(im.header_status)<<"\",\"sections\":\""<<pe_status_name(im.section_status)<<"\",\"imports\":\""<<pe_status_name(im.import_status)<<"\",\"exports\":\""<<pe_status_name(im.export_status)<<"\",\"relocations\":\""<<pe_status_name(im.relocation_status)<<"\",\"resources\":\""<<pe_status_name(im.resource_status)<<"\",\"tls\":\""<<pe_status_name(im.tls_status)<<"\",\"debug\":\""<<pe_status_name(im.debug_status)<<"\"},\n  \"diagnostics\":[";for(std::size_t i=0;i<im.diagnostics.size();++i){if(i)o<<",";diagnostic_json(o,im.diagnostics[i]);}o<<"]\n}\n";return o.str();}
+    std::ostringstream o;o<<"BinX PE Inspector v"<<BINX_VERSION<<"\n\nPE HEADERS\n  Format:         "<<(im.headers.optional.pe_class==PEClass::PE64?"PE32+":"PE32")<<"\n  Machine:        "<<machine_name(im.headers.coff.machine)<<" ("<<im.headers.coff.machine<<")\n  Timestamp:       "<<im.headers.coff.timestamp<<"\n  Sections:        "<<im.sections.size()<<"\n  Image base:      "<<hx(im.headers.optional.image_base)<<"\n  Entry RVA:       "<<hx(im.headers.optional.address_of_entry_point)<<"\n  Entry file off:  "<<(im.headers.entry_point_file_offset?hx(*im.headers.entry_point_file_offset):"n/a")<<"\n  SizeOfImage:     "<<im.headers.optional.size_of_image<<" bytes\n  SizeOfHeaders:   "<<im.headers.optional.size_of_headers<<" bytes\n  Subsystem:       "<<subsystem_name(im.headers.optional.subsystem)<<"\n\n";
+    if(cmd=="sections"||cmd=="inspect"){o<<"SECTIONS\n  #  Name       RVA        VSize      RawOff     RawSize    Flags\n";for(const auto&s:im.sections)o<<"  "<<std::setw(2)<<s.index<<" "<<std::left<<std::setw(10)<<s.name<<std::right<<" "<<std::setw(10)<<hx(s.virtual_address)<<" "<<std::setw(10)<<s.virtual_size<<" "<<std::setw(10)<<hx(s.raw_pointer)<<" "<<std::setw(10)<<s.raw_size<<" "<<flags(s)<<"\n";o<<"\n";}
+    if(cmd=="imports"||cmd=="inspect"){o<<"IMPORTS\n";if(im.imports)for(const auto&m:im.imports->modules){o<<"  "<<m.dll_name<<"\n";for(const auto&s:m.symbols)o<<"    "<<(s.name?*s.name:(s.ordinal?"#"+std::to_string(*s.ordinal):"<unknown>"))<<"\n";}else o<<"  none\n";o<<"\n";}
+    if(cmd=="exports"||cmd=="inspect"){o<<"EXPORTS\n";if(im.exports)for(const auto&f:im.exports->functions)o<<"  "<<std::setw(8)<<f.ordinal<<" "<<std::setw(10)<<hx(f.rva)<<" "<<(f.name?*f.name:"<unnamed>")<<(f.forwarder?" -> "+*f.forwarder:"")<<"\n";else o<<"  none\n";o<<"\n";}
+    if(cmd=="relocations"||cmd=="inspect"){o<<"RELOCATIONS\n";if(im.relocations){for(const auto&b:im.relocations->blocks)o<<"  Block "<<hx(b.page_rva)<<"  entries="<<b.entries.size()<<"\n";}else o<<"  none\n";o<<"\n";}
+    if(cmd=="resources"||cmd=="inspect"){o<<"RESOURCES\n";if(im.resources)for(const auto&r:im.resources->items){o<<"  ";for(std::size_t i=0;i<r.path.size();++i)o<<(i?"/":"")<<r.path[i];o<<"  RVA="<<hx(r.data_rva)<<"  size="<<r.data_size<<"  lang="<<r.language<<"\n";}else o<<"  none\n";o<<"\n";}
+    if(cmd=="inspect"||detailed){o<<"TLS\n  Status:         "<<pe_status_name(im.tls_status)<<"\n  Callbacks:      "<<(im.tls?im.tls->callbacks.size():0)<<"\n\nDEBUG\n  Status:         "<<pe_status_name(im.debug_status)<<"\n  Entries:        "<<im.debug_entries.size()<<"\n";for(const auto&d:im.debug_entries)if(d.codeview)o<<"  PDB:            "<<d.codeview->pdb_path<<"\n";o<<"\nSECURITY FLAGS\n";for(const auto&s:dll_characteristic_names(im.headers.optional.dll_characteristics))o<<"  "<<s<<"\n";o<<"\nVALIDATION\n  Errors:          "<<std::count_if(im.diagnostics.begin(),im.diagnostics.end(),[](const auto&d){return d.severity==DiagnosticSeverity::Error;})<<"\n  Warnings:        "<<std::count_if(im.diagnostics.begin(),im.diagnostics.end(),[](const auto&d){return d.severity==DiagnosticSeverity::Warning;})<<"\n";for(const auto&d:im.diagnostics)o<<"  ["<<diagnostic_severity_name(d.severity)<<"] "<<d.code<<": "<<d.message<<"\n";}
+    return o.str();
 }
 std::string format_hashes(const Hashes&h,bool json){if(json)return std::string("{\"md5\":\"")+h.md5+"\",\"sha1\":\""+h.sha1+"\",\"sha256\":\""+h.sha256+"\"}\n";return std::string("MD5:     ")+h.md5+"\nSHA-1:   "+h.sha1+"\nSHA-256: "+h.sha256+"\n";}
 }

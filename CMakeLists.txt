@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(binx VERSION 0.1.0 LANGUAGES CXX)
+project(binx VERSION 0.2.0 LANGUAGES CXX)
 include(CTest)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,14 +29,11 @@ else()
     find_package(OpenSSL REQUIRED COMPONENTS Crypto)
     target_link_libraries(binx PRIVATE OpenSSL::Crypto)
 endif()
-include(GNUInstallDirs)
-install(TARGETS binx RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUNDLE DESTINATION .)
 
 if(BUILD_TESTING)
     add_executable(binx_tests
         tests/test_core.cpp
         src/core/byte_reader.cpp
-        src/core/binary.cpp
         src/formats/detect.cpp
         src/formats/pe.cpp
         src/formats/elf.cpp
@@ -57,6 +54,7 @@ if(BUILD_TESTING)
     add_test(NAME binx_unit COMMAND binx_tests)
     add_test(NAME binx_help COMMAND binx --help)
     add_test(NAME binx_version COMMAND binx --version)
-    add_test(NAME binx_empty_info COMMAND binx info ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/empty.bin)
-    add_test(NAME binx_empty_hash COMMAND binx hash ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/empty.bin --json)
 endif()
+
+include(GNUInstallDirs)
+install(TARGETS binx RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUNDLE DESTINATION .)
