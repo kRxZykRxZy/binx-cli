@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #ifdef _WIN32
+#include <windows.h>
 #include <bcrypt.h>
 #else
 #include <openssl/evp.h>
@@ -31,7 +32,9 @@ Result<std::string> cng_hash(std::span<const std::byte>d,LPCWSTR alg,std::size_t
 Result<std::string> evp_hash(std::span<const std::byte>d,const EVP_MD*alg){
  EVP_MD_CTX*ctx=EVP_MD_CTX_new();if(!ctx)return Error{ErrorCode::Analysis,"failed to create OpenSSL digest context"};
  unsigned char out[EVP_MAX_MD_SIZE];unsigned int n=0;
- const bool ok=EVP_DigestInit_ex(ctx,alg,nullptr)==1&&EVP_DigestUpdate(ctx,reinterpret_cast<const unsigned char*>(d.data()),d.size())==1&&EVP_DigestFinal_ex(ctx,out,&n)==1;
+ bool ok=EVP_DigestInit_ex(ctx,alg,nullptr)==1;
+ if(ok&&!d.empty())ok=EVP_DigestUpdate(ctx,reinterpret_cast<const unsigned char*>(d.data()),d.size())==1;
+ ok=ok&&EVP_DigestFinal_ex(ctx,out,&n)==1;
  EVP_MD_CTX_free(ctx);if(!ok)return Error{ErrorCode::Analysis,"OpenSSL digest operation failed"};return hex(out,n);
 }
 #endif
