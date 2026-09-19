@@ -1,8 +1,6 @@
 #pragma once
 #include <span>
-#include <cstddef>
 #include "binx/core/binary.hpp"
-
 namespace binx {
 Metadata detect_metadata(std::span<const std::byte> data);
 const char* format_name(BinaryFormat);

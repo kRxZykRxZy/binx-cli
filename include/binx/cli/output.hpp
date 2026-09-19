@@ -2,10 +2,9 @@
 #include <string>
 #include "binx/core/binary.hpp"
 #include "binx/hashing/hasher.hpp"
-
 namespace binx {
-void print_help();
-void print_version();
-void print_info(const BinaryFile&, bool json);
-void print_hashes(const Hashes&, bool json);
+std::string format_help();
+std::string format_version();
+std::string format_info(const BinaryFile& file, bool json, bool detailed);
+std::string format_hashes(const Hashes& hashes, bool json);
 }
