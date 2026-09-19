@@ -1,30 +1,40 @@
-# BinX v0.1 JSON
+# BinX JSON interface
 
-JSON output is intended for scripts and CI.
+## v0.2 schema
 
-Example:
+PE commands use schema version 2:
 
-```json
-{
-  "file": {
-    "name": "app.exe",
-    "size": 184832
-  },
-  "format": "PE32+",
-  "architecture": "x86-64",
-  "endianness": "little",
-  "platform": "Windows",
-  "valid": true,
-  "entry_point": "0x140001000",
-  "entry_point_rva": "0x1000",
-  "image_base": "0x140000000",
-  "machine": 34404,
-  "section_count": 6,
-  "image_size": 20480,
-  "headers_size": 1024,
-  "subsystem": 3,
-  "timestamp": 0
-}
-```
+    {
+      "schema_version": 2,
+      "format": "PE32+",
+      "headers": {},
+      "sections": [],
+      "imports": [],
+      "exports": [],
+      "relocations": [],
+      "resources": [],
+      "tls": {},
+      "debug": {},
+      "statuses": {},
+      "diagnostics": []
+    }
 
-Fields that are not applicable to a format may be omitted. Hexadecimal address values are strings so JSON consumers do not lose precision.
+Addresses are hexadecimal strings so consumers do not lose 64-bit precision.
+
+Terminal formatting and JSON are separate renderings of the same parsed model. Binary parsers never emit JSON directly.
+
+## v0.1 compatibility
+
+Generic info output continues to use schema version 1 for non-PE files and retains the v0.1 fields.
+
+## Diagnostics
+
+Each diagnostic contains:
+- severity
+- stable code
+- component
+- optional file offset
+- optional RVA
+- message
+
+Scripts should branch on code, not human-readable message.
