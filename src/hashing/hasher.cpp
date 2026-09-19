@@ -5,6 +5,9 @@
 #include <sstream>
 #include <vector>
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <bcrypt.h>
 #else
@@ -15,27 +18,16 @@ namespace {
 std::string hex(const unsigned char*p,std::size_t n){std::ostringstream s;s<<std::hex<<std::setfill('0');for(std::size_t i=0;i<n;++i)s<<std::setw(2)<<static_cast<unsigned int>(p[i]);return s.str();}
 #ifdef _WIN32
 Result<std::string> cng_hash(std::span<const std::byte>d,LPCWSTR alg,std::size_t digest_size){
- BCRYPT_ALG_HANDLE provider=nullptr;BCRYPT_HASH_HANDLE hash=nullptr;
- NTSTATUS status=BCryptOpenAlgorithmProvider(&provider,alg,nullptr,0);
+ BCRYPT_ALG_HANDLE provider=nullptr;BCRYPT_HASH_HANDLE hash=nullptr;NTSTATUS status=BCryptOpenAlgorithmProvider(&provider,alg,nullptr,0);
  if(status<0)return Error{ErrorCode::Analysis,"failed to open Windows CNG hash provider"};
  status=BCryptCreateHash(provider,&hash,nullptr,0,nullptr,0,0);
  if(status<0){BCryptCloseAlgorithmProvider(provider,0);return Error{ErrorCode::Analysis,"failed to create Windows CNG hash state"};}
- std::size_t off=0;
- while(off<d.size()){const auto chunk=std::min<std::size_t>(d.size()-off,static_cast<std::size_t>(std::numeric_limits<ULONG>::max()));
-  status=BCryptHashData(hash,reinterpret_cast<PUCHAR>(const_cast<std::byte*>(d.data()+off)),static_cast<ULONG>(chunk),0);
-  if(status<0){BCryptDestroyHash(hash);BCryptCloseAlgorithmProvider(provider,0);return Error{ErrorCode::Analysis,"Windows CNG hash operation failed"};}off+=chunk;}
- std::vector<unsigned char>out(digest_size);status=BCryptFinishHash(hash,out.data(),static_cast<ULONG>(out.size()),0);
- BCryptDestroyHash(hash);BCryptCloseAlgorithmProvider(provider,0);
- if(status<0)return Error{ErrorCode::Analysis,"Windows CNG hash finalization failed"};return hex(out.data(),out.size());
+ std::size_t off=0;while(off<d.size()){const auto chunk=std::min<std::size_t>(d.size()-off,static_cast<std::size_t>(std::numeric_limits<ULONG>::max()));status=BCryptHashData(hash,reinterpret_cast<PUCHAR>(const_cast<std::byte*>(d.data()+off)),static_cast<ULONG>(chunk),0);if(status<0){BCryptDestroyHash(hash);BCryptCloseAlgorithmProvider(provider,0);return Error{ErrorCode::Analysis,"Windows CNG hash operation failed"};}off+=chunk;}
+ std::vector<unsigned char>out(digest_size);status=BCryptFinishHash(hash,out.data(),static_cast<ULONG>(out.size()),0);BCryptDestroyHash(hash);BCryptCloseAlgorithmProvider(provider,0);if(status<0)return Error{ErrorCode::Analysis,"Windows CNG hash finalization failed"};return hex(out.data(),out.size());
 }
 #else
 Result<std::string> evp_hash(std::span<const std::byte>d,const EVP_MD*alg){
- EVP_MD_CTX*ctx=EVP_MD_CTX_new();if(!ctx)return Error{ErrorCode::Analysis,"failed to create OpenSSL digest context"};
- unsigned char out[EVP_MAX_MD_SIZE];unsigned int n=0;
- bool ok=EVP_DigestInit_ex(ctx,alg,nullptr)==1;
- if(ok&&!d.empty())ok=EVP_DigestUpdate(ctx,reinterpret_cast<const unsigned char*>(d.data()),d.size())==1;
- ok=ok&&EVP_DigestFinal_ex(ctx,out,&n)==1;
- EVP_MD_CTX_free(ctx);if(!ok)return Error{ErrorCode::Analysis,"OpenSSL digest operation failed"};return hex(out,n);
+ EVP_MD_CTX*ctx=EVP_MD_CTX_new();if(!ctx)return Error{ErrorCode::Analysis,"failed to create OpenSSL digest context"};unsigned char out[EVP_MAX_MD_SIZE];unsigned int n=0;bool ok=EVP_DigestInit_ex(ctx,alg,nullptr)==1;if(ok&&!d.empty())ok=EVP_DigestUpdate(ctx,reinterpret_cast<const unsigned char*>(d.data()),d.size())==1;ok=ok&&EVP_DigestFinal_ex(ctx,out,&n)==1;EVP_MD_CTX_free(ctx);if(!ok)return Error{ErrorCode::Analysis,"OpenSSL digest operation failed"};return hex(out,n);
 }
 #endif
 }
