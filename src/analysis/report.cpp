@@ -4,11 +4,8 @@
 #include "binx/core/text.hpp"
 #include "binx/analysis/symbols.hpp"
 #include "binx/formats/detect.hpp"
-#include <iomanip>
 #include <sstream>
 namespace binx {
-namespace {
-}
 Result<BinaryReport> build_binary_report(const BinaryFile&f){
  BinaryReport r;const auto&m=f.metadata();r.file_name=f.path().filename().string();r.file_size=m.file_size;r.format=m.format;r.architecture=m.architecture;r.endianness=endianness_name(m.endianness);r.platform=m.platform;
  for(const auto&d:extract_dependencies(f))r.dependencies.push_back(d.name);
