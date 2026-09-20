@@ -28,7 +28,10 @@ Instruction decode(std::span<const std::byte>d,std::uint64_t addr,std::uint64_t 
  else if(op==0xC2&&n+2<=d.size()){x.mnemonic="ret";x.operands=hex(u8(d,n)|std::uint64_t(u8(d,n+1))<<8);n+=2;}
  else if(op==0x31&&n<d.size()){auto m=u8(d,n++);if((m>>6)==3){x.mnemonic="xor";x.operands=reg(((m>>3)&7)|(rex&4?8:0),rex&8)+", "+reg((m&7)|(rex&1?8:0),rex&8);}else{x.valid=false;x.mnemonic="db";x.operands=hex(op);}}
  else {x.valid=false;x.mnemonic="db";x.operands=hex(op);}
- if(n==0)n=1;if(n>d.size())n=d.size();x.bytes.assign(d.begin(),d.begin()+n);return x;
+ if(n==0)n=1;
+ if(n>d.size())n=d.size();
+ x.bytes.assign(d.begin(),d.begin()+static_cast<std::ptrdiff_t>(n));
+ return x;
 }
 std::string bytes_hex(const std::vector<std::byte>&b){std::ostringstream o;for(auto v:b)o<<std::setw(2)<<std::setfill('0')<<std::hex<<std::uppercase<<unsigned(std::to_integer<unsigned char>(v))<<" ";return o.str();}
 }
