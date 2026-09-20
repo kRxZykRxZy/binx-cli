@@ -23,6 +23,8 @@ jobs:
         run: cmake --build build/gcc --parallel 2
       - name: Test
         run: ctest --test-dir build/gcc --output-on-failure
+      - name: Install smoke test
+        run: cmake --install build/gcc --prefix build/gcc/install
 
   linux-clang:
     runs-on: ubuntu-latest
@@ -41,6 +43,8 @@ jobs:
         run: cmake --build build/clang --parallel 2
       - name: Test
         run: ctest --test-dir build/clang --output-on-failure
+      - name: Install smoke test
+        run: cmake --install build/clang --prefix build/clang/install
 
   linux-sanitizers:
     runs-on: ubuntu-latest
@@ -59,6 +63,8 @@ jobs:
         run: cmake --build build/asan --parallel 2
       - name: Test
         run: ctest --test-dir build/asan --output-on-failure
+      - name: Install smoke test
+        run: cmake --install build/asan --prefix build/asan/install
 
   windows-msvc:
     runs-on: windows-latest
