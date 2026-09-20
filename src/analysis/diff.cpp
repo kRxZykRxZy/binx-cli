@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>
+#include <string_view>
 namespace binx {
 namespace {
 std::string hx(std::uint64_t v){return hex_u64(v);}
@@ -26,13 +27,13 @@ Result<BinaryDiff> compare_binaries(const BinaryFile&a,const BinaryFile&b,std::s
  auto as=secs(a),bs=secs(b);std::unordered_map<std::string,Sec> am,bm;for(auto&s:as)am.emplace(s.name,s);for(auto&s:bs)bm.emplace(s.name,s);
  for(const auto&[name,s]:am){auto it=bm.find(name);if(it==bm.end()){d.sections.push_back({name,s.size,0,-static_cast<std::int64_t>(s.size),0,false,true});continue;}auto t=it->second;std::uint64_t changed=0;auto n=std::min(s.size,t.size);if(s.off+s.size<=a.size()&&t.off+t.size<=b.size())for(std::uint64_t j=0;j<n;++j)if(x[static_cast<std::size_t>(s.off+j)]!=y[static_cast<std::size_t>(t.off+j)])++changed;d.sections.push_back({name,s.size,t.size,static_cast<std::int64_t>(t.size)-static_cast<std::int64_t>(s.size),changed,false,false});}
  for(const auto&[name,s]:bm)if(am.find(name)==am.end())d.sections.push_back({name,0,s.size,static_cast<std::int64_t>(s.size),0,true,false});
- std::sort(d.sections.begin(),d.sections.end(),[](const auto&a,const auto&b){return a.name<b.name;});return d;
+ std::sort(d.sections.begin(),d.sections.end(),[](const auto&lhs,const auto&rhs){return lhs.name<rhs.name;});return d;
 }
 Result<SizeReport> analyze_size(const BinaryFile&f){
  SizeReport r;r.file_size=f.size();auto m=f.metadata();r.image_size=m.image_size.value_or(0);r.headers_size=m.headers_size.value_or(0);
  if(m.format==BinaryFormat::PE32||m.format==BinaryFormat::PE64){auto p=parse_pe(f.bytes());if(!p)return p.error();r.code_size=p.value().headers.optional.size_of_code;r.initialized_data=p.value().headers.optional.size_of_initialized_data;r.uninitialized_data=p.value().headers.optional.size_of_uninitialized_data;for(const auto&s:p.value().sections)r.sections.push_back({s.name,s.raw_size,s.virtual_size,s.executable?"code":s.writable?"data":"other"});}
- else if(m.format==BinaryFormat::ELF32||m.format==BinaryFormat::ELF64){auto e=parse_elf_image(f.bytes());if(!e)return e.error();for(const auto&s:e.value().sections){auto kind=(s.flags&4u)?"code":(s.flags&1u)?"data":"other";r.sections.push_back({s.name,s.size,s.size,kind});if(kind=="code")r.code_size+=s.size;else if(kind=="data")r.initialized_data+=s.size;}}
- else r.sections.push_back({"<raw>",f.size(),f.size,"other"});
+ else if(m.format==BinaryFormat::ELF32||m.format==BinaryFormat::ELF64){auto e=parse_elf_image(f.bytes());if(!e)return e.error();for(const auto&s:e.value().sections){auto kind=(s.flags&4u)?"code":(s.flags&1u)?"data":"other";r.sections.push_back({s.name,s.size,s.size,kind});if(std::string_view(kind)=="code")r.code_size+=s.size;else if(std::string_view(kind)=="data")r.initialized_data+=s.size;}}
+ else r.sections.push_back({"<raw>",f.size(),f.size(),"other"});
  return r;
 }
 std::string format_binary_diff(const BinaryDiff&d,const BinaryFile&a,const BinaryFile&b,bool json){
