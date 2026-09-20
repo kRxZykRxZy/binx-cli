@@ -113,5 +113,14 @@ int main(){
  }
  auto cof=BinaryFile::open(corep);assert(cof);auto cor=analyze_crash_dump(cof.value());assert(cor&&cor.value().format==CrashDumpFormat::ELFCore&&cor.value().architecture==Architecture::X86_64&&cor.value().thread_count==1&&cor.value().signal==11);
  std::filesystem::remove(corep);
+ auto malformed=std::filesystem::temp_directory_path()/"binx-v1-malformed.dmp";
+ {
+  std::vector<std::byte>bad(32);
+  bad[0]=std::byte{'M'};bad[1]=std::byte{'D'};bad[2]=std::byte{'M'};bad[3]=std::byte{'P'};
+  p32(bad,8,1);p32(bad,12,31);
+  std::ofstream out_bad(malformed,std::ios::binary);
+  out_bad.write(reinterpret_cast<const char*>(bad.data()),static_cast<std::streamsize>(bad.size()));
+ }
+ auto mbad=BinaryFile::open(malformed);assert(mbad);auto malformed_result=analyze_crash_dump(mbad.value());assert(!malformed_result&&malformed_result.error().code==ErrorCode::InvalidBinary);std::filesystem::remove(malformed);
  return 0;
 }
