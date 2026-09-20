@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <iterator>
 using namespace binx;
 namespace {
 void p16(std::vector<std::byte>&b,std::size_t o,std::uint16_t v){b[o]=std::byte(v&255);b[o+1]=std::byte((v>>8)&255);}
