@@ -17,7 +17,9 @@ std::string generic_json(const BinaryFile&f){const auto&m=f.metadata();std::ostr
 std::string format_help(){return std::string("BinX - Binary Inspector v")+BINX_VERSION+
 "\n\nUsage:\n  binx <command> <file> [options]\n\n"
 "Commands:\n  info        Show concise metadata\n  inspect     Run full PE inspection\n  sections    Show PE sections\n  imports     Show PE imports\n  exports     Show PE exports\n  resources   Show PE resources\n  relocations Show PE base relocations\n  segments    Show ELF program segments\n  symbols     Show ELF symbols\n  dynamic     Show ELF dynamic table\n  notes       Show ELF notes\n  strings     Extract strings\n  hexdump     Display a hexadecimal view\n  search      Search text or hex bytes\n  regions     Classify binary regions\n  deps        List direct dependencies\n  graph       Build recursive dependency graph
-  disasm      Disassemble executable code\n  hash        Calculate MD5, SHA-1 and SHA-256\n  version     Show BinX version\n  help        Show this help\n\n"
+  disasm      Disassemble executable code
+  symbols     List symbols from ELF/PE/debug metadata
+  debug       Inspect DWARF/PDB debug information\n  hash        Calculate MD5, SHA-1 and SHA-256\n  version     Show BinX version\n  help        Show this help\n\n"
 "Options:\n  --json     Emit machine-readable JSON\n  --output   Write output to a file\n  --verbose  Enable diagnostic output\n  --quiet    Suppress normal output\n  --search-path Directory for dependency resolution (repeatable)\n  --recursive  Build a graph from deps/dependencies\n  --depth      Maximum dependency depth (default: 8)\n  --max-nodes  Maximum dependency graph nodes (default: 256)\n  --dot        Emit Graphviz DOT for graph
   --from-entry Start at the binary entry point
   --count      Maximum instructions (default: 100)

@@ -6,6 +6,7 @@
 #include "binx/analysis/byte_analysis.hpp"
 #include "binx/analysis/dependencies.hpp"
 #include "binx/analysis/disassembly.hpp"
+#include "binx/analysis/symbols.hpp"
 #include <fstream>
 #include <cassert>
 #include <cstddef>
@@ -78,6 +79,7 @@ int main(){
  auto dot=dependency_graph_dot(graph.value());assert(dot.find("KERNEL32.dll")!=std::string::npos);
  std::filesystem::remove_all(mtemp,mec);
  auto mtemp2=std::filesystem::temp_directory_path()/"binx-v05-macho-tests";std::filesystem::create_directories(mtemp2,mec);auto mp=mtemp2/"app";{std::ofstream mf(mp,std::ios::binary);auto x=macho_dependency_fixture();mf.write(reinterpret_cast<const char*>(x.data()),static_cast<std::streamsize>(x.size()));}auto mb=BinaryFile::open(mp);assert(mb&&mb.value().metadata().format==BinaryFormat::MachO64);auto mdps=extract_dependencies(mb.value());assert(mdps.size()==1&&mdps[0].name=="/usr/lib/libSystem.B.dylib"&&mdps[0].kind==DependencyKind::MachODylib);std::filesystem::remove_all(mtemp2,mec);
+ auto dbgtest=std::filesystem::temp_directory_path()/"binx-symbol-test.bin";{std::ofstream sf(dbgtest,std::ios::binary);auto z=fixture();sf.write(reinterpret_cast<const char*>(z.data()),static_cast<std::streamsize>(z.size()));}auto bf=BinaryFile::open(dbgtest);assert(bf);auto sy=collect_symbols(bf.value());assert(sy);bool found=false;for(auto&s:sy.value())if(s.name=="GetProcAddress"&&s.kind==SymbolKind::Import)found=true;assert(found);auto di=collect_debug_info(bf.value());assert(di&&di.value().has_pdb&&di.value().pdb_guid.size()==36&&di.value().pdb_age==1);std::filesystem::remove(dbgtest);
  auto code=std::vector<std::byte>{std::byte{0x55},std::byte{0x48},std::byte{0x89},std::byte{0xE5},std::byte{0x90},std::byte{0xE8},std::byte{0x02},std::byte{0},std::byte{0},std::byte{0},std::byte{0xC3}};auto ds=disassemble_x86(code,0x1000,0,20);assert(ds&&ds.value().size()==5);assert(ds.value()[0].mnemonic=="push"&&ds.value()[1].mnemonic=="mov"&&ds.value()[2].mnemonic=="nop"&&ds.value()[3].mnemonic=="call"&&ds.value()[3].branch_target&&*ds.value()[3].branch_target==0x100b&&ds.value()[4].mnemonic=="ret");
  const auto abc=std::vector<std::byte>{std::byte{'a'},std::byte{'b'},std::byte{'c'}};auto h=hash_all(abc);assert(h);assert(h.value().md5=="900150983cd24fb0d6963f7d28e17f72");assert(h.value().sha1=="a9993e364706816aba3e25717850c26c9cd0d89d");assert(h.value().sha256=="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
  return 0;

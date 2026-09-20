@@ -6,7 +6,7 @@ The CLI command is binx.
 
 ## Current release
 
-v0.6.0 — Disassembly
+v0.7.0 — Symbols & Debug Information
 
 v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recursive resolution and dependency graphs.
 
@@ -96,3 +96,15 @@ binx regions app
 v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> **v0.5 dependencies** -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> v0.8 diff/size -> v0.9 crash analysis -> v0.95 unified analysis/reporting -> v1.0 complete local toolkit.
 
 Cloud/API remains post-v1.
+
+
+## v0.7 symbols and debug information
+
+```cmd
+binx symbols program.exe
+binx symbols program --json
+binx debug program.exe
+binx debug program --json
+```
+
+BinX now unifies ELF symbols, PE exports/imports, PE CodeView/PDB identity, and ELF DWARF section/CU discovery. Debug inspection remains offline and does not fetch external symbol servers.

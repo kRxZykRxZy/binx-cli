@@ -48,6 +48,7 @@ if(BUILD_TESTING)
         src/analysis/byte_analysis.cpp
         src/analysis/dependencies.cpp
         src/analysis/disassembly.cpp
+        src/analysis/symbols.cpp
     )
     target_include_directories(binx_tests PRIVATE include)
     if(MSVC)

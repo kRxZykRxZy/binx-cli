@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.7.0 - Symbols and Debug Information
+
+- Added unified `symbols`/`sym` command.
+- Added ELF symbol-table extraction with function/object/section classification and binding information.
+- Added PE import/export symbols and CodeView/PDB identity records.
+- Added `debug`/`debug-info` command.
+- Added DWARF section discovery and bounded `.debug_info` compilation-unit counting for DWARF v2-v5.
+- Added machine-readable JSON schema version 5 for symbols and debug metadata.
+- Added tests for PE PDB identity and unified symbol extraction.
+- Kept all symbol/debug analysis local; no cloud or symbol-server access.
+
+
 ## v0.6.0 - Disassembly
 
 - Added built-in offline x86/x86-64 disassembly.
