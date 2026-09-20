@@ -12,6 +12,8 @@
 #include "binx/analysis/report.hpp"
 #include "binx/core/text.hpp"
 #include <fstream>
+#include <filesystem>
+#include <system_error>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
