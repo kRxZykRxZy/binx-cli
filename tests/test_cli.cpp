@@ -70,7 +70,9 @@ int main() {
     assert(binx::is_disassembly_command("disasm"));
     assert(!binx::is_supported_command("not-a-command"));
 
-    assert(binx::json_escape(""\\\n") == "\\"\\\\\\n");
+    assert(binx::json_escape("\"") == "\\\"");
+    assert(binx::json_escape("\\") == "\\\\");
+    assert(binx::json_escape("\n") == "\\n");
     assert(binx::hex_u64(0x1234) == "0x1234");
     assert(binx::hex_u64(0xABCD, false) == "0xabcd");
     return 0;
