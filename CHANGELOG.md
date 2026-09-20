@@ -1,3 +1,11 @@
+## v0.9.0 - Offline Crash Analysis
+
+- Added `crash` and `crash-analysis` commands.
+- Added Windows minidump parsing for system architecture, exception code/address, crashing thread and module metadata.
+- Added ELF core-dump parsing for architecture, thread notes and signal information.
+- Added deterministic text output and JSON schema version 7.
+- Kept crash analysis offline and non-executing; dump files are treated strictly as untrusted data.
+
 # Changelog
 
 ## v0.8.0 - Binary Diff and Size Analysis
