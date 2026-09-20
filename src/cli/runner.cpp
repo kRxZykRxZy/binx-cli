@@ -122,7 +122,7 @@ Result<int> run_format_specific(const Options& o, const BinaryFile& file) {
             format_elf_command(elf.value(), o.command, o.json, o.command == "inspect"), o);
     }
 
-    if (is_elf_command(o.command)) {
+    if (is_elf_command(o.command) && !is_pe_command(o.command)) {
         return Error{ErrorCode::UnsupportedFormat, "command requires an ELF image"};
     }
 

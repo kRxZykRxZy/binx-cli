@@ -27,6 +27,7 @@ Instruction decode(std::span<const std::byte>d,std::uint64_t addr,std::uint64_t 
  else if(op>=0xB8&&op<=0xBF){unsigned r=(op-0xB8)|(rex&1?8:0);std::size_t sz=rex&8?8:4;if(n+sz<=d.size()){std::uint64_t imm=0;for(std::size_t i=0;i<sz;++i)imm|=std::uint64_t(u8(d,n+i))<<(8*i);n+=sz;x.mnemonic="mov";x.operands=reg(r,rex&8)+", "+hex(imm);}}
  else if(op==0xC2&&n+2<=d.size()){x.mnemonic="ret";x.operands=hex(u8(d,n)|std::uint64_t(u8(d,n+1))<<8);n+=2;}
  else if(op==0x31&&n<d.size()){auto m=u8(d,n++);if((m>>6)==3){x.mnemonic="xor";x.operands=reg(((m>>3)&7)|(rex&4?8:0),rex&8)+", "+reg((m&7)|(rex&1?8:0),rex&8);}else{x.valid=false;x.mnemonic="db";x.operands=hex(op);}}
+  else if((op==0x89||op==0x8B)&&n<d.size()){auto m=u8(d,n++);if((m>>6)==3){const auto dst=reg((m&7)|(rex&1?8:0),rex&8);const auto src=reg(((m>>3)&7)|(rex&4?8:0),rex&8);x.mnemonic="mov";x.operands=(op==0x89)?(dst+", "+src):(src+", "+dst);}else{x.valid=false;x.mnemonic="db";x.operands=hex(op);}}
  else {x.valid=false;x.mnemonic="db";x.operands=hex(op);}
  if(n==0)n=1;
  if(n>d.size())n=d.size();
