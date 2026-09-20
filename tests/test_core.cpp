@@ -7,6 +7,7 @@
 #include "binx/analysis/dependencies.hpp"
 #include "binx/analysis/disassembly.hpp"
 #include "binx/analysis/symbols.hpp"
+#include "binx/analysis/diff.hpp"
 #include <fstream>
 #include <cassert>
 #include <cstddef>

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.8.0 - Binary Diff and Size Analysis
+
+- Added `diff`/`compare` for deterministic byte-level comparison of two binaries.
+- Added bounded change hunks, changed/added/removed byte counts and similarity ratio.
+- Added PE and ELF section-level size/change analysis when section metadata is available.
+- Added `size` command with code/data/header/image size breakdowns.
+- Added JSON schema version 6 for diff and size reports.
+- Fixed the v0.7 build integration by compiling the symbols implementation into the main executable.
+- Bumped the project and CLI version to 0.8.0.
+
+
 ## v0.7.0 - Symbols and Debug Information
 
 - Added unified `symbols`/`sym` command.

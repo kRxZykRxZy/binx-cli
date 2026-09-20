@@ -6,7 +6,7 @@ The CLI command is binx.
 
 ## Current release
 
-v0.7.0 — Symbols & Debug Information
+v0.8.0 — Binary Diff & Size Analysis
 
 v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recursive resolution and dependency graphs.
 
@@ -83,6 +83,8 @@ binx hexdump app --offset 0x100 --length 256
 binx search app --hex "48 8B ?? FF"
 binx search app --text "needle"
 binx regions app
+    binx size app
+    binx diff old.bin new.bin
     binx hash app.exe
 
     binx inspect app.exe --json
@@ -93,7 +95,7 @@ binx regions app
 
 ## Roadmap
 
-v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> **v0.5 dependencies** -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> v0.8 diff/size -> v0.9 crash analysis -> v0.95 unified analysis/reporting -> v1.0 complete local toolkit.
+v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> **v0.5 dependencies** -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> **v0.8 diff/size** -> v0.9 crash analysis -> v0.95 unified analysis/reporting -> v1.0 complete local toolkit.
 
 Cloud/API remains post-v1.
 
