@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(binx VERSION 0.8.0 LANGUAGES CXX)
+project(binx VERSION 0.9.0 LANGUAGES CXX)
 include(CTest)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,6 +52,7 @@ if(BUILD_TESTING)
         src/analysis/disassembly.cpp
         src/analysis/symbols.cpp
         src/analysis/diff.cpp
+        src/analysis/crash.cpp
     )
     target_include_directories(binx_tests PRIVATE include)
     if(MSVC)
