@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <queue>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -65,5 +66,12 @@ Result<DependencyGraph> build_dependency_graph(const std::filesystem::path&root,
  while(!q.empty()){auto [u,depth]=q.front();q.pop();if(expanded.count(u))continue;expanded.insert(u);if(depth>max_depth)continue;auto f=BinaryFile::open(g.nodes[u].path);if(!f)continue;for(auto dep:extract_dependencies(f.value())){auto resolved=resolve(g.nodes[u].path.parent_path(),dep.name,search);if(!resolved){unresolved.insert(dep.name);continue;}auto v=add_node(*resolved,true);if(!v){if(g.nodes.size()>=max_nodes)return Error{ErrorCode::Analysis,"dependency graph node limit exceeded"};continue;}g.edges.push_back({u,*v,dep});if(depth+1<=max_depth)q.push({*v,depth+1});}}
  g.unresolved.assign(unresolved.begin(),unresolved.end());find_cycles(g,g.cycles);return g;
 }
-std::string dependency_graph_dot(const DependencyGraph&g){auto esc=[](const std::string&s){std::string o;for(char c:s){if(c=='"')o+="\\\\\\\"";else if(c=='\\\\')o+="\\\\\\\\";else o+=c;}return o;};std::ostringstream o;o<<"digraph binx_dependencies {\\n  rankdir=LR;\\n";for(const auto&n:g.nodes)o<<"  n"<<n.id<<" [label=\\""<<esc(n.path.filename().string())<<"\\"];\\n";for(const auto&e:g.edges)o<<"  n"<<e.from<<" -> n"<<e.to<<" [label=\\""<<esc(dependency_kind_name(e.dependency.kind))<<"\\"];\\n";o<<"}\\n";return o.str();}
+std::string dependency_graph_dot(const DependencyGraph&g){
+ auto esc=[](const std::string&s){std::string o;for(char c:s){if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\";
+ else o+=c;}return o;};
+ std::ostringstream o;o<<"digraph binx_dependencies {\n  rankdir=LR;\n";
+ for(const auto&n:g.nodes)o<<"  n"<<n.id<<" [label=\""<<esc(n.path.filename().string())<<"\"];\n";
+ for(const auto&e:g.edges)o<<"  n"<<e.from<<" -> n"<<e.to<<" [label=\""<<esc(dependency_kind_name(e.dependency.kind))<<"\"];\n";
+ o<<"}\n";return o.str();
+}
 }
