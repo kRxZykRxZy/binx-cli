@@ -1,76 +1,127 @@
 cmake_minimum_required(VERSION 3.20)
-project(binx VERSION 0.95.0 LANGUAGES CXX)
+
+project(binx VERSION 1.0.0 LANGUAGES CXX)
+
 include(CTest)
+include(GNUInstallDirs)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(binx
-    src/main.cpp
+option(BINX_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+set(BINX_CORE_SOURCES
     src/core/binary.cpp
     src/core/byte_reader.cpp
+    src/core/text.cpp
     src/formats/detect.cpp
     src/formats/pe.cpp
     src/formats/elf.cpp
     src/formats/macho.cpp
     src/hashing/hasher.cpp
-    src/cli/output.cpp
     src/analysis/byte_analysis.cpp
-    src/cli/analysis_output.cpp
     src/analysis/dependencies.cpp
     src/analysis/disassembly.cpp
     src/analysis/symbols.cpp
     src/analysis/diff.cpp
     src/analysis/crash.cpp
     src/analysis/report.cpp
-    src/cli/dependency_output.cpp
 )
-target_include_directories(binx PRIVATE include)
+
+add_library(binx_core STATIC ${BINX_CORE_SOURCES})
+target_include_directories(binx_core
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_compile_features(binx_core PUBLIC cxx_std_20)
+
+if(MSVC)
+    target_compile_options(binx_core PRIVATE /W4 /permissive- /utf-8)
+else()
+    target_compile_options(binx_core PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
+
+if(WIN32)
+    target_link_libraries(binx_core PUBLIC bcrypt)
+else()
+    find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+    target_link_libraries(binx_core PUBLIC OpenSSL::Crypto)
+endif()
+
+add_executable(binx
+    src/main.cpp
+    src/cli/commands.cpp
+    src/cli/io.cpp
+    src/cli/options.cpp
+    src/cli/runner.cpp
+    src/cli/analysis_output.cpp
+    src/cli/dependency_output.cpp
+    src/cli/output.cpp
+)
+target_link_libraries(binx PRIVATE binx_core)
+
 if(MSVC)
     target_compile_options(binx PRIVATE /W4 /permissive- /utf-8)
 else()
     target_compile_options(binx PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
 endif()
-if(WIN32)
-    target_link_libraries(binx PRIVATE bcrypt)
-else()
-    find_package(OpenSSL REQUIRED COMPONENTS Crypto)
-    target_link_libraries(binx PRIVATE OpenSSL::Crypto)
+
+if(BINX_ENABLE_SANITIZERS AND NOT MSVC)
+    target_compile_options(binx_core PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(binx_core PRIVATE -fsanitize=address,undefined)
+    target_compile_options(binx PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(binx PRIVATE -fsanitize=address,undefined)
+elseif(BINX_ENABLE_SANITIZERS AND MSVC)
+    target_compile_options(binx PRIVATE /fsanitize=address)
+    target_compile_options(binx_core PRIVATE /fsanitize=address)
 endif()
 
 if(BUILD_TESTING)
     add_executable(binx_tests
         tests/test_core.cpp
-        src/core/binary.cpp
-        src/core/byte_reader.cpp
-        src/formats/detect.cpp
-        src/formats/pe.cpp
-        src/formats/elf.cpp
-        src/formats/macho.cpp
-        src/hashing/hasher.cpp
-        src/analysis/byte_analysis.cpp
-        src/analysis/dependencies.cpp
-        src/analysis/disassembly.cpp
-        src/analysis/symbols.cpp
-        src/analysis/diff.cpp
-        src/analysis/crash.cpp
+        tests/test_cli.cpp
     )
-    target_include_directories(binx_tests PRIVATE include)
+    target_link_libraries(binx_tests PRIVATE binx_core)
     if(MSVC)
         target_compile_options(binx_tests PRIVATE /W4 /permissive- /utf-8)
     else()
         target_compile_options(binx_tests PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
     endif()
-    if(WIN32)
-        target_link_libraries(binx_tests PRIVATE bcrypt)
-    else()
-        target_link_libraries(binx_tests PRIVATE OpenSSL::Crypto)
+
+    if(BINX_ENABLE_SANITIZERS AND NOT MSVC)
+        target_compile_options(binx_tests PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_link_options(binx_tests PRIVATE -fsanitize=address,undefined)
+    elseif(BINX_ENABLE_SANITIZERS AND MSVC)
+        target_compile_options(binx_tests PRIVATE /fsanitize=address)
     endif()
+
     add_test(NAME binx_unit COMMAND binx_tests)
     add_test(NAME binx_help COMMAND binx --help)
     add_test(NAME binx_version COMMAND binx --version)
 endif()
 
-include(GNUInstallDirs)
-install(TARGETS binx RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUNDLE DESTINATION .)
+install(TARGETS binx binx_core
+    EXPORT BinXTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(EXPORT BinXTargets
+    FILE BinXTargets.cmake
+    NAMESPACE BinX::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BinX
+)
+
+set(CPACK_PACKAGE_NAME "binx")
+set(CPACK_PACKAGE_VENDOR "BinX")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Offline developer-first binary analysis toolkit")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_CONTACT "BinX maintainers")
+set(CPACK_GENERATOR "ZIP;TGZ")
+include(CPack)
