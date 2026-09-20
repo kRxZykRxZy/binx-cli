@@ -39,6 +39,7 @@ std::string format_help(){
  "  graph       Build recursive dependency graph\n"
  "  disasm      Disassemble executable code\n"
  "  debug       Inspect DWARF/PDB debug information\n"
+ "  crash       Analyze a Windows minidump or ELF core dump\n"
  "  hash        Calculate MD5, SHA-1 and SHA-256\n"
  "  version     Show BinX version\n"
  "  help        Show this help\n\n"
