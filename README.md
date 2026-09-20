@@ -94,10 +94,13 @@ binx search app --text "needle"
 binx regions app
     binx size app
     binx diff old.bin new.bin
+    binx compare old.bin new.bin
     binx crash crash.dmp
     binx crash core --json
+    binx crash-analysis crash.dmp
     binx report app.exe
     binx report app.exe --json
+    binx analyze app.exe --json
     binx hash app.exe
 
     binx inspect app.exe --json
