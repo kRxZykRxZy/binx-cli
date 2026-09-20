@@ -8,7 +8,6 @@ The CLI command is binx.
 
 v1.0.0 — Complete Local Toolkit
 
-v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recursive resolution and dependency graphs.
 
 ## Capabilities
 
@@ -114,7 +113,7 @@ v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -
 Cloud/API, telemetry and online enrichment are intentionally outside v1.0.
 
 
-## v0.7 symbols and debug information
+### v0.7 symbols and debug information
 
 ```cmd
 binx symbols program.exe
