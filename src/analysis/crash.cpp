@@ -237,7 +237,7 @@ Result<CrashReport> analyze_crash_dump(const BinaryFile& file) {
     } else if (data.size() >= 20 && data[0] == std::byte{0x7f} &&
                data[1] == std::byte{'E'} && data[2] == std::byte{'L'} &&
                data[3] == std::byte{'F'} &&
-               data[4] == std::byte{1} || data[4] == std::byte{2}) {
+               (data[4] == std::byte{1} || data[4] == std::byte{2})) {
         report.format = CrashDumpFormat::ELFCore;
         if (!parse_elf_core(data, report)) {
             return Error{ErrorCode::InvalidBinary, "ELF core program-note data is invalid"};
