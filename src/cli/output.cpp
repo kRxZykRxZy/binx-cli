@@ -14,18 +14,50 @@ std::string join_json(const std::vector<std::string>&v){std::ostringstream o;o<<
 void diagnostic_json(std::ostringstream&o,const Diagnostic&d){o<<"{\"severity\":\""<<diagnostic_severity_name(d.severity)<<"\",\"code\":\""<<esc(d.code)<<"\",\"component\":\""<<esc(d.component)<<"\"";if(d.file_offset)o<<",\"file_offset\":\""<<hx(*d.file_offset)<<"\"";if(d.rva)o<<",\"rva\":\""<<hx(*d.rva)<<"\"";o<<",\"message\":\""<<esc(d.message)<<"\"}";}
 std::string generic_json(const BinaryFile&f){const auto&m=f.metadata();std::ostringstream o;o<<"{\n  \"schema_version\":1,\n  \"file\":{\"name\":\""<<esc(f.path().filename().string())<<"\",\"size\":"<<m.file_size<<"},\n  \"format\":\""<<format_name(m.format)<<"\",\n  \"architecture\":\""<<architecture_name(m.architecture)<<"\",\n  \"endianness\":\""<<endianness_name(m.endianness)<<"\",\n  \"platform\":\""<<esc(m.platform)<<"\"";if(m.entry_point)o<<",\n  \"entry_point\":\""<<hx(*m.entry_point)<<"\"";if(m.image_base)o<<",\n  \"image_base\":\""<<hx(*m.image_base)<<"\"";o<<"\n}\n";return o.str();}
 }
-std::string format_help(){return std::string("BinX - Binary Inspector v")+BINX_VERSION+
-"\n\nUsage:\n  binx <command> <file> [options]\n\n"
-"Commands:\n  info        Show concise metadata\n  inspect     Run full PE inspection\n  sections    Show PE sections\n  imports     Show PE imports\n  exports     Show PE exports\n  resources   Show PE resources\n  relocations Show PE base relocations\n  segments    Show ELF program segments\n  symbols     Show ELF symbols\n  dynamic     Show ELF dynamic table\n  notes       Show ELF notes\n  strings     Extract strings\n  hexdump     Display a hexadecimal view\n  search      Search text or hex bytes\n  regions     Classify binary regions\n  size        Show size breakdown\n  diff        Compare two binaries\n  deps        List direct dependencies\n  graph       Build recursive dependency graph
-  disasm      Disassemble executable code
-  symbols     List symbols from ELF/PE/debug metadata
-  debug       Inspect DWARF/PDB debug information\n  hash        Calculate MD5, SHA-1 and SHA-256\n  version     Show BinX version\n  help        Show this help\n\n"
-"Options:\n  --json     Emit machine-readable JSON\n  --output   Write output to a file\n  --verbose  Enable diagnostic output\n  --quiet    Suppress normal output\n  --search-path Directory for dependency resolution (repeatable)\n  --recursive  Build a graph from deps/dependencies\n  --depth      Maximum dependency depth (default: 8)\n  --max-nodes  Maximum dependency graph nodes (default: 256)\n  --dot        Emit Graphviz DOT for graph
-  --from-entry Start at the binary entry point
-  --count      Maximum instructions (default: 100)
-  --max-bytes  Maximum bytes to decode
-  --syntax     Disassembly syntax: intel or att
-  --help     Show help\n";}
+std::string format_help(){
+ return std::string("BinX - Binary Inspector v")+BINX_VERSION+
+ "\n\nUsage:\n  binx <command> <file> [options]\n\n"
+ "Commands:\n"
+ "  info        Show concise metadata\n"
+ "  inspect     Run full format inspection\n"
+ "  sections    Show PE/ELF sections\n"
+ "  imports     Show PE imports\n"
+ "  exports     Show PE exports\n"
+ "  resources   Show PE resources\n"
+ "  relocations Show relocations\n"
+ "  segments    Show ELF program segments\n"
+ "  symbols     List symbols from ELF/PE/debug metadata\n"
+ "  dynamic     Show ELF dynamic table\n"
+ "  notes       Show ELF notes\n"
+ "  strings     Extract strings\n"
+ "  hexdump     Display a hexadecimal view\n"
+ "  search      Search text or hex bytes\n"
+ "  regions     Classify binary regions\n"
+ "  size        Show binary size breakdown\n"
+ "  diff        Compare two binaries\n"
+ "  deps        List direct dependencies\n"
+ "  graph       Build recursive dependency graph\n"
+ "  disasm      Disassemble executable code\n"
+ "  debug       Inspect DWARF/PDB debug information\n"
+ "  hash        Calculate MD5, SHA-1 and SHA-256\n"
+ "  version     Show BinX version\n"
+ "  help        Show this help\n\n"
+ "Options:\n"
+ "  --json        Emit machine-readable JSON\n"
+ "  --output      Write output to a file\n"
+ "  --verbose     Enable diagnostic output\n"
+ "  --quiet       Suppress normal output\n"
+ "  --search-path Directory for dependency resolution (repeatable)\n"
+ "  --recursive   Build a graph from deps/dependencies\n"
+ "  --depth       Maximum dependency depth (default: 8)\n"
+ "  --max-nodes   Maximum dependency graph nodes (default: 256)\n"
+ "  --dot         Emit Graphviz DOT for graph\n"
+ "  --from-entry  Start disassembly at the binary entry point\n"
+ "  --count       Maximum instructions (default: 100)\n"
+ "  --max-bytes   Maximum bytes to decode\n"
+ "  --syntax      Disassembly syntax: intel or att\n"
+ "  --help        Show help\n";
+}
 std::string format_version(){return std::string("BinX Binary Inspector ")+BINX_VERSION+"\n";}
 std::string format_info(const BinaryFile&f,bool json,bool detailed){if(json)return generic_json(f);const auto&m=f.metadata();std::ostringstream o;o<<"BinX Binary Inspector v"<<BINX_VERSION<<"\n\nFILE\n  Name:          "<<f.path().filename().string()<<"\n  Size:          "<<m.file_size<<" bytes\n\nFORMAT\n  Type:          "<<format_name(m.format)<<"\n  Architecture:  "<<architecture_name(m.architecture)<<"\n  Endianness:    "<<endianness_name(m.endianness)<<"\n  Platform:      "<<(m.platform.empty()?"unknown":m.platform)<<"\n\nIMAGE\n  Entry point:   "<<(m.entry_point?hx(*m.entry_point):"n/a")<<"\n  Image base:    "<<(m.image_base?hx(*m.image_base):"n/a")<<"\n";if(m.section_count)o<<"  Sections:      "<<*m.section_count<<"\n";if(detailed)o<<"\nNOTE\n  Use PE-specific inspect output when the input is a PE image.\n";return o.str();}
 std::string format_pe_command(const PEImage&im,const std::string&cmd,bool json,bool detailed){
