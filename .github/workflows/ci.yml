@@ -88,4 +88,4 @@ jobs:
       - name: Build
         run: cmake --build build-asan --config Debug --parallel 2
       - name: Test
-        run: ctest --test-dir build-asan -C Debug --output-on-failure
+        run: ctest --test-dir build-asan -C Debug --output-on-failure --timeout 60
