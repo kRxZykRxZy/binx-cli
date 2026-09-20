@@ -52,8 +52,7 @@ else()
     target_link_libraries(binx_core PUBLIC OpenSSL::Crypto)
 endif()
 
-add_executable(binx
-    src/main.cpp
+add_library(binx_cli STATIC
     src/cli/commands.cpp
     src/cli/io.cpp
     src/cli/options.cpp
@@ -62,7 +61,21 @@ add_executable(binx
     src/cli/dependency_output.cpp
     src/cli/output.cpp
 )
-target_link_libraries(binx PRIVATE binx_core)
+target_link_libraries(binx_cli PUBLIC binx_core)
+target_include_directories(binx_cli
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+if(MSVC)
+    target_compile_options(binx_cli PRIVATE /W4 /permissive- /utf-8)
+else()
+    target_compile_options(binx_cli PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
+
+add_executable(binx src/main.cpp)
+target_link_libraries(binx PRIVATE binx_cli)
 
 if(MSVC)
     target_compile_options(binx PRIVATE /W4 /permissive- /utf-8)
@@ -84,7 +97,7 @@ if(BUILD_TESTING)
     add_executable(binx_core_tests tests/test_core.cpp)
     add_executable(binx_cli_tests tests/test_cli.cpp)
     target_link_libraries(binx_core_tests PRIVATE binx_core)
-    target_link_libraries(binx_cli_tests PRIVATE binx_core)
+    target_link_libraries(binx_cli_tests PRIVATE binx_cli)
 
     foreach(test_target IN ITEMS binx_core_tests binx_cli_tests)
         if(MSVC)
@@ -107,7 +120,7 @@ if(BUILD_TESTING)
     add_test(NAME binx_version COMMAND binx --version)
 endif()
 
-install(TARGETS binx binx_core
+install(TARGETS binx binx_core binx_cli
     EXPORT BinXTargets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
