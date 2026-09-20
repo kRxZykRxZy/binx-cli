@@ -1,5 +1,6 @@
 #include "binx/cli/dependency_output.hpp"
 #include "binx/core/text.hpp"
+#include "binx/formats/detect.hpp"
 #include <sstream>
 
 namespace binx {
