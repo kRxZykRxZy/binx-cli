@@ -6,7 +6,7 @@ The CLI command is binx.
 
 ## Current release
 
-v0.8.0 — Binary Diff & Size Analysis
+v0.9.0 — Offline Crash Analysis
 
 v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recursive resolution and dependency graphs.
 
@@ -85,6 +85,8 @@ binx search app --text "needle"
 binx regions app
     binx size app
     binx diff old.bin new.bin
+    binx crash crash.dmp
+    binx crash core --json
     binx hash app.exe
 
     binx inspect app.exe --json
