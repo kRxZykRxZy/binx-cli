@@ -43,7 +43,7 @@ Result<std::vector<DisassemblyBlock>> disassemble_file(const BinaryFile&f,const 
  return out;
 }
 std::string format_disassembly(const std::vector<DisassemblyBlock>&b,bool json,DisassemblySyntax){
- auto esc=[](const std::string&s){std::string o;for(char c:s){if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\";else o+=c;}return o;};std::ostringstream o;
+ std::ostringstream o;
  if(json){o<<"{\n  \"schema_version\":4,\n  \"blocks\":[";for(std::size_t i=0;i<b.size();++i){if(i)o<<",";o<<"{\"section\":\""<<json_escape(b[i].section)<<"\",\"file_offset\":"<<b[i].file_offset<<",\"virtual_address\":\"0x"<<std::hex<<b[i].virtual_address<<std::dec<<"\",\"instructions\":[";for(std::size_t j=0;j<b[i].instructions.size();++j){if(j)o<<",";auto&x=b[i].instructions[j];o<<"{\"address\":\"0x"<<std::hex<<x.address<<std::dec<<"\",\"file_offset\":"<<x.file_offset<<",\"bytes\":\""<<bytes_hex(x.bytes)<<"\",\"mnemonic\":\""<<x.mnemonic<<"\",\"operands\":\""<<json_escape(x.operands)<<"\",\"valid\":"<<(x.valid?"true":"false");if(x.branch_target)o<<",\"branch_target\":\"0x"<<std::hex<<*x.branch_target<<std::dec<<"\"";o<<"}";}o<<"]}";}o<<"]\n}\n";return o.str();}
  for(const auto&z:b){o<<"DISASSEMBLY "<<z.section<<" @ 0x"<<std::hex<<z.virtual_address<<std::dec<<"\n";for(const auto&x:z.instructions)o<<"  0x"<<std::hex<<x.address<<std::dec<<"  "<<std::left<<std::setw(24)<<bytes_hex(x.bytes)<<std::setw(8)<<x.mnemonic<<" "<<x.operands<<(x.valid?"":"  ; unknown")<<"\n";o<<"\n";}return o.str();
 }
