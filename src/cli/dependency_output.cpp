@@ -1,4 +1,5 @@
 #include "binx/cli/dependency_output.hpp"
+#include "binx/formats/detect.hpp"
 #include <sstream>
 namespace binx {
 namespace {std::string esc(const std::string&s){std::string o;for(char c:s){if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\";
