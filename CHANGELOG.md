@@ -1,3 +1,11 @@
+## v0.95.0 - Unified Analysis & Reporting
+
+- Added `report` command and `analyze` alias.
+- Added a bounded unified report combining metadata, dependencies, symbols, debug presence, size totals and string samples.
+- Added JSON schema version 5 for unified reports.
+- Added v0.95 report unit-test coverage.
+- Kept reporting offline, deterministic and non-executing.
+
 ## v0.9.0 - Offline Crash Analysis
 
 - Added `crash` and `crash-analysis` commands.
