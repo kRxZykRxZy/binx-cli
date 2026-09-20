@@ -6,11 +6,10 @@ The CLI command is binx.
 
 ## Current release
 
-v0.95.0 — Unified Analysis & Reporting
+v1.0.0 — Complete Local Toolkit
 
-v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recursive resolution and dependency graphs.
 
-### v0.2 features
+## Capabilities
 
 - PE32 and PE32+ header parsing
 - ELF32 and ELF64 header parsing
@@ -44,11 +43,21 @@ v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recur
 - Windows CNG hashing and OpenSSL hashing on non-Windows builds
 - malformed-input coverage and synthetic PE integration tests
 
-### Safety
+
+## Safety
 
 BinX treats binaries as untrusted data. It never executes the inspected file, never loads the target DLL, never invokes TLS callbacks, never resolves dependencies by loading them, and never downloads PDBs.
 
 There is no cloud/API dependency or telemetry.
+
+## Architecture
+
+v1.0 separates reusable analysis from the process-facing CLI:
+- binx_core contains core I/O, format parsers, hashing and analysis engines.
+- binx contains CLI option parsing, command routing, file output and renderers.
+- tests contains core/analysis and CLI regression coverage.
+
+See [docs/architecture.md](docs/architecture.md) and [docs/v1.0.md](docs/v1.0.md).
 
 ## Build
 
@@ -74,10 +83,10 @@ Linux/macOS:
     binx exports app.dll
     binx resources app.exe
     binx relocations app.exe
-binx segments app
-binx symbols app
-binx dynamic app
-binx notes app
+    binx segments app
+    binx symbols app
+    binx dynamic app
+    binx notes app
 binx strings app --encoding all --min-length 5
 binx hexdump app --offset 0x100 --length 256
 binx search app --hex "48 8B ?? FF"
@@ -85,10 +94,13 @@ binx search app --text "needle"
 binx regions app
     binx size app
     binx diff old.bin new.bin
+    binx compare old.bin new.bin
     binx crash crash.dmp
     binx crash core --json
+    binx crash-analysis crash.dmp
     binx report app.exe
     binx report app.exe --json
+    binx analyze app.exe --json
     binx hash app.exe
 
     binx inspect app.exe --json
@@ -97,14 +109,14 @@ binx regions app
     binx sections app.exe --output sections.txt
     binx inspect app.exe --verbose
 
-## Roadmap
+## Release line
 
-v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> **v0.5 dependencies** -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> **v0.8 diff/size** -> v0.95 unified analysis/reporting -> v1.0 complete local toolkit.
+v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> v0.5 dependencies -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> v0.8 diff/size -> v0.9 crash analysis -> v0.95 unified reporting -> **v1.0 complete local toolkit**.
 
-Cloud/API remains post-v1.
+Cloud/API, telemetry and online enrichment are intentionally outside v1.0.
 
 
-## v0.7 symbols and debug information
+### v0.7 symbols and debug information
 
 ```cmd
 binx symbols program.exe

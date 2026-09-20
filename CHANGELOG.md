@@ -1,3 +1,17 @@
+# Changelog
+
+## v1.0.0 - Complete Local Toolkit
+
+- Finished the v0.1-v0.95 feature line as a stable local toolkit.
+- Split the application into reusable `binx_core` and a thin CLI composition layer.
+- Added modular CLI option parsing, command classification, output routing and shared text/JSON utilities.
+- Added reproducible CMake presets, library installation/export, CMake package configuration and CPack archives.
+- Added dedicated CLI parser regression tests alongside the existing analysis regression suite.
+- Added cross-platform GCC, Clang and MSVC CI, sanitizer jobs and Windows packaging.
+- Hardened Windows minidump parsing with bounded module/thread extraction and deterministic malformed-input failures.
+- Expanded architecture, security, contribution, v1.0 and JSON interface documentation.
+- Kept the v1 boundary offline, non-executing and free of telemetry/cloud dependencies.
+
 ## v0.95.0 - Unified Analysis & Reporting
 
 - Added `report` command and `analyze` alias.

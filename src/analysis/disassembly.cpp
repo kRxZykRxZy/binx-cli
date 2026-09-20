@@ -1,4 +1,5 @@
 #include "binx/analysis/disassembly.hpp"
+#include "binx/core/text.hpp"
 #include "binx/formats/elf.hpp"
 #include "binx/formats/pe.hpp"
 #include <algorithm>
@@ -10,7 +11,7 @@ std::uint8_t u8(std::span<const std::byte>d,std::size_t i){return std::to_intege
 std::uint32_t le32(std::span<const std::byte>d,std::size_t i){return std::uint32_t(u8(d,i))|(std::uint32_t(u8(d,i+1))<<8)|(std::uint32_t(u8(d,i+2))<<16)|(std::uint32_t(u8(d,i+3))<<24);}
 std::int32_t s32(std::span<const std::byte>d,std::size_t i){return static_cast<std::int32_t>(le32(d,i));}
 std::int8_t s8(std::span<const std::byte>d,std::size_t i){return static_cast<std::int8_t>(u8(d,i));}
-std::string hex(std::uint64_t x){std::ostringstream o;o<<"0x"<<std::hex<<std::uppercase<<x;return o.str();}
+std::string hex(std::uint64_t x){return hex_u64(x);}
 std::string reg(unsigned n,bool w){static const char*r64[]={"rax","rcx","rdx","rbx","rsp","rbp","rsi","rdi","r8","r9","r10","r11","r12","r13","r14","r15"};static const char*r32[]={"eax","ecx","edx","ebx","esp","ebp","esi","edi","r8d","r9d","r10d","r11d","r12d","r13d","r14d","r15d"};return w?r64[n&15]:r32[n&15];}
 Instruction decode(std::span<const std::byte>d,std::uint64_t addr,std::uint64_t fo,DisassemblySyntax){
  Instruction x;x.address=addr;x.file_offset=fo;if(d.empty())return x;std::size_t n=0;std::uint8_t rex=0;while(n<d.size()&&u8(d,n)>=0x40&&u8(d,n)<=0x4f){rex=u8(d,n++);}
@@ -27,7 +28,10 @@ Instruction decode(std::span<const std::byte>d,std::uint64_t addr,std::uint64_t 
  else if(op==0xC2&&n+2<=d.size()){x.mnemonic="ret";x.operands=hex(u8(d,n)|std::uint64_t(u8(d,n+1))<<8);n+=2;}
  else if(op==0x31&&n<d.size()){auto m=u8(d,n++);if((m>>6)==3){x.mnemonic="xor";x.operands=reg(((m>>3)&7)|(rex&4?8:0),rex&8)+", "+reg((m&7)|(rex&1?8:0),rex&8);}else{x.valid=false;x.mnemonic="db";x.operands=hex(op);}}
  else {x.valid=false;x.mnemonic="db";x.operands=hex(op);}
- if(n==0)n=1;if(n>d.size())n=d.size();x.bytes.assign(d.begin(),d.begin()+n);return x;
+ if(n==0)n=1;
+ if(n>d.size())n=d.size();
+ x.bytes.assign(d.begin(),d.begin()+static_cast<std::ptrdiff_t>(n));
+ return x;
 }
 std::string bytes_hex(const std::vector<std::byte>&b){std::ostringstream o;for(auto v:b)o<<std::setw(2)<<std::setfill('0')<<std::hex<<std::uppercase<<unsigned(std::to_integer<unsigned char>(v))<<" ";return o.str();}
 }
@@ -42,8 +46,8 @@ Result<std::vector<DisassemblyBlock>> disassemble_file(const BinaryFile&f,const 
  return out;
 }
 std::string format_disassembly(const std::vector<DisassemblyBlock>&b,bool json,DisassemblySyntax){
- auto esc=[](const std::string&s){std::string o;for(char c:s){if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\";else o+=c;}return o;};std::ostringstream o;
- if(json){o<<"{\n  \"schema_version\":4,\n  \"blocks\":[";for(std::size_t i=0;i<b.size();++i){if(i)o<<",";o<<"{\"section\":\""<<esc(b[i].section)<<"\",\"file_offset\":"<<b[i].file_offset<<",\"virtual_address\":\"0x"<<std::hex<<b[i].virtual_address<<std::dec<<"\",\"instructions\":[";for(std::size_t j=0;j<b[i].instructions.size();++j){if(j)o<<",";auto&x=b[i].instructions[j];o<<"{\"address\":\"0x"<<std::hex<<x.address<<std::dec<<"\",\"file_offset\":"<<x.file_offset<<",\"bytes\":\""<<bytes_hex(x.bytes)<<"\",\"mnemonic\":\""<<x.mnemonic<<"\",\"operands\":\""<<esc(x.operands)<<"\",\"valid\":"<<(x.valid?"true":"false");if(x.branch_target)o<<",\"branch_target\":\"0x"<<std::hex<<*x.branch_target<<std::dec<<"\"";o<<"}";}o<<"]}";}o<<"]\n}\n";return o.str();}
+ std::ostringstream o;
+ if(json){o<<"{\n  \"schema_version\":4,\n  \"blocks\":[";for(std::size_t i=0;i<b.size();++i){if(i)o<<",";o<<"{\"section\":\""<<json_escape(b[i].section)<<"\",\"file_offset\":"<<b[i].file_offset<<",\"virtual_address\":\"0x"<<std::hex<<b[i].virtual_address<<std::dec<<"\",\"instructions\":[";for(std::size_t j=0;j<b[i].instructions.size();++j){if(j)o<<",";auto&x=b[i].instructions[j];o<<"{\"address\":\"0x"<<std::hex<<x.address<<std::dec<<"\",\"file_offset\":"<<x.file_offset<<",\"bytes\":\""<<bytes_hex(x.bytes)<<"\",\"mnemonic\":\""<<x.mnemonic<<"\",\"operands\":\""<<json_escape(x.operands)<<"\",\"valid\":"<<(x.valid?"true":"false");if(x.branch_target)o<<",\"branch_target\":\"0x"<<std::hex<<*x.branch_target<<std::dec<<"\"";o<<"}";}o<<"]}";}o<<"]\n}\n";return o.str();}
  for(const auto&z:b){o<<"DISASSEMBLY "<<z.section<<" @ 0x"<<std::hex<<z.virtual_address<<std::dec<<"\n";for(const auto&x:z.instructions)o<<"  0x"<<std::hex<<x.address<<std::dec<<"  "<<std::left<<std::setw(24)<<bytes_hex(x.bytes)<<std::setw(8)<<x.mnemonic<<" "<<x.operands<<(x.valid?"":"  ; unknown")<<"\n";o<<"\n";}return o.str();
 }
 }

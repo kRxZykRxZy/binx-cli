@@ -1,55 +1,307 @@
 #include "binx/analysis/crash.hpp"
+#include "binx/core/text.hpp"
 #include "binx/formats/detect.hpp"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <sstream>
+#include <utility>
+
 namespace binx {
 namespace {
-std::string esc(const std::string&s){std::string o;for(char c:s){if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\";else if(static_cast<unsigned char>(c)<0x20)o+="?";else o+=c;}return o;}
-using B=std::span<const std::byte>;
-std::uint16_t u16(B b,std::size_t o){return o+2<=b.size()?static_cast<std::uint16_t>(std::to_integer<unsigned char>(b[o])|(std::to_integer<unsigned char>(b[o+1])<<8)):0;}
-std::uint32_t u32(B b,std::size_t o){std::uint32_t v=0;for(int i=0;i<4&&o+static_cast<std::size_t>(i)<b.size();++i)v|=std::uint32_t(std::to_integer<unsigned char>(b[o+i]))<<(8*i);return v;}
-std::uint64_t u64(B b,std::size_t o){std::uint64_t v=0;for(int i=0;i<8&&o+static_cast<std::size_t>(i)<b.size();++i)v|=std::uint64_t(std::to_integer<unsigned char>(b[o+i]))<<(8*i);return v;}
-bool range(B b,std::uint64_t o,std::uint64_t n){return o<=b.size()&&n<=b.size()-o;}
-std::string minidump_string(B b,std::uint32_t rva){if(!range(b,rva,4))return {};auto chars=u32(b,rva);auto bytes=std::uint64_t(chars)*2;if(!range(b,std::uint64_t(rva)+4,bytes))return {};std::string s;for(std::uint32_t i=0;i<chars;++i){auto c=u16(b,rva+4+std::size_t(i)*2);s.push_back(c<128?static_cast<char>(c):'?');}return s;}
-Architecture arch_from_elf_machine(std::uint16_t m){switch(m){case 3:return Architecture::X86;case 62:return Architecture::X86_64;case 40:return Architecture::ARM;case 183:return Architecture::ARM64;case 243:return Architecture::RISCV64;default:return Architecture::Unknown;}}
-bool note_align_ok(std::uint64_t x){return x<=0x10000000ull;}
-void parse_minidump(B b,CrashReport&r){
- if(b.size()<32)return;auto streams=u32(b,8);auto dir_rva=u32(b,12);
- if(streams>4096||!range(b,dir_rva,std::uint64_t(streams)*12))return;
- for(std::uint32_t i=0;i<streams;++i){auto p=std::size_t(dir_rva)+std::size_t(i)*12;auto type=u32(b,p),size=u32(b,p+4),rva=u32(b,p+8);if(!range(b,rva,size))continue;
-  if(type==4&&size>=4){auto n=u32(b,rva);r.module_count=0;auto base=std::uint64_t(rva)+4;for(std::uint32_t j=0;j<r.module_count&&range(b,base,108);++j,base+=108){CrashModule m;m.base=u64(b,base);m.size=u32(b,base+8);m.name=minidump_string(b,u32(b,base+20));r.modules.push_back(std::move(m));++r.module_count;}}
-  else if(type==3&&size>=4){auto n=u32(b,rva);r.thread_count=0;auto pth=std::uint64_t(rva)+4;for(std::uint32_t j=0;j<r.thread_count&&range(b,pth,48);++j,pth+=48){CrashThread t;t.id=u32(b,pth);t.stack_start=u64(b,pth+24);t.stack_size=u32(b,pth+32);r.threads.push_back(t);++r.thread_count;}}
-  else if(type==6&&size>=168){r.crashing_thread=u32(b,rva);r.exception_code=u32(b,rva+8);r.fault_address=u64(b,rva+24);}
-  else if(type==7&&size>=2){auto a=u16(b,rva);switch(a){case 0:r.architecture=Architecture::X86;break;case 9:r.architecture=Architecture::X86_64;break;case 5:r.architecture=Architecture::ARM;break;case 12:r.architecture=Architecture::ARM64;break;default:break;}}
- }
+
+using Bytes = std::span<const std::byte>;
+
+bool range_valid(Bytes data, std::uint64_t offset, std::uint64_t length) {
+    return offset <= data.size() && length <= data.size() - offset;
 }
-void parse_elf_core(B b,CrashReport&r){
- if(b.size()<64)return;bool is64=b[4]==std::byte{2};bool be=b[5]==std::byte{2};if(be)return;
- auto type=u16(b,16);if(type!=4)return;
- auto machine=u16(b,18);r.architecture=arch_from_elf_machine(machine);auto phoff=is64?u64(b,32):u32(b,28);auto phentsz=u16(b,is64?54:42);auto phnum=u16(b,is64?56:44);if(phnum>4096||phentsz< (is64?56:32)||!range(b,phoff,std::uint64_t(phentsz)*phnum))return;
- for(std::uint16_t i=0;i<phnum;++i){auto p=std::size_t(phoff)+std::size_t(i)*phentsz;auto ptype=u32(b,p);auto off=is64?u64(b,p+8):u32(b,p+4);auto filesz=is64?u64(b,p+32):u32(b,p+16);if(ptype!=4||!range(b,off,filesz)||filesz<12)continue;
-  std::uint64_t q=off,end=off+filesz;while(q+12<=end){auto namesz=u32(b,q),descsz=u32(b,q+4),ntype=u32(b,q+8);if(!note_align_ok(namesz)||!note_align_ok(descsz))break;auto no=((std::uint64_t(namesz)+3)/4)*4,nd=((std::uint64_t(descsz)+3)/4)*4;if(q+12+no+nd>end)break;auto desc=q+12+no;
-   if(ntype==1)++r.thread_count;
-   if(ntype==0x53494749&&descsz>=4)r.signal=u32(b,desc);
-   q+=12+no+nd;
-  }
- }
+
+std::uint16_t read_u16(Bytes data, std::uint64_t offset, bool big_endian) {
+    if (!range_valid(data, offset, 2)) return 0;
+    const auto a = std::to_integer<std::uint8_t>(data[static_cast<std::size_t>(offset)]);
+    const auto b = std::to_integer<std::uint8_t>(
+        data[static_cast<std::size_t>(offset + 1)]);
+    return big_endian
+        ? static_cast<std::uint16_t>((std::uint16_t(a) << 8) | b)
+        : static_cast<std::uint16_t>(a | (std::uint16_t(b) << 8));
 }
+
+std::uint32_t read_u32(Bytes data, std::uint64_t offset, bool big_endian) {
+    if (!range_valid(data, offset, 4)) return 0;
+    std::uint32_t value = 0;
+    for (std::size_t i = 0; i < 4; ++i) {
+        const auto byte = std::to_integer<std::uint8_t>(
+            data[static_cast<std::size_t>(offset + i)]);
+        const auto shift = big_endian ? static_cast<unsigned>(8 * (3 - i))
+                                      : static_cast<unsigned>(8 * i);
+        value |= std::uint32_t(byte) << shift;
+    }
+    return value;
 }
-const char* crash_dump_format_name(CrashDumpFormat f){switch(f){case CrashDumpFormat::WindowsMinidump:return "Windows minidump";case CrashDumpFormat::ELFCore:return "ELF core dump";default:return "unknown";}}
-Result<CrashReport> analyze_crash_dump(const BinaryFile&file){
- CrashReport r;auto b=file.bytes();
- if(b.size()>=4&&b[0]==std::byte{'M'}&&b[1]==std::byte{'D'}&&b[2]==std::byte{'M'}&&b[3]==std::byte{'P'}){r.format=CrashDumpFormat::WindowsMinidump;parse_minidump(b,r);}
- else if(b.size()>=20&&b[0]==std::byte{0x7f}&&b[1]==std::byte{'E'}&&b[2]==std::byte{'L'}&&b[3]==std::byte{'F'}&&u16(b,16)==4){r.format=CrashDumpFormat::ELFCore;parse_elf_core(b,r);}
- else return Error{ErrorCode::UnsupportedFormat,"input is not a supported Windows minidump or ELF core dump"};
- r.architecture_name=architecture_name(r.architecture);
-  return r;
+
+std::uint64_t read_u64(Bytes data, std::uint64_t offset, bool big_endian) {
+    if (!range_valid(data, offset, 8)) return 0;
+    std::uint64_t value = 0;
+    for (std::size_t i = 0; i < 8; ++i) {
+        const auto byte = std::to_integer<std::uint8_t>(
+            data[static_cast<std::size_t>(offset + i)]);
+        const auto shift = big_endian ? static_cast<unsigned>(8 * (7 - i))
+                                      : static_cast<unsigned>(8 * i);
+        value |= std::uint64_t(byte) << shift;
+    }
+    return value;
 }
-std::string format_crash_report(const CrashReport&r,const BinaryFile&f,bool json){
- std::ostringstream o;
- if(json){o<<"{\n  \"schema_version\":7,\n  \"file\":\""<<f.path().filename().string()<<"\",\n  \"format\":\""<<crash_dump_format_name(r.format)<<"\",\n  \"architecture\":\""<<r.architecture_name<<"\",\n  \"threads\":"<<r.thread_count<<",\n  \"modules\":"<<r.module_count<<",\n  \"exception_code\":"<<r.exception_code<<",\n  \"signal\":"<<r.signal<<",\n  \"fault_address\":\"0x"<<std::hex<<r.fault_address<<"\",\n  \"crashing_thread\":"<<std::dec<<r.crashing_thread<<",\n  \"module_list\":[";for(std::size_t i=0;i<r.modules.size();++i){if(i)o<<",";auto&m=r.modules[i];o<<"{\"base\":\"0x"<<std::hex<<m.base<<"\",\"size\":"<<std::dec<<m.size<<",\"name\":\""<<esc(m.name)<<"\"}";}o<<"]\n}\n";return o.str();}
- o<<"BINX CRASH ANALYSIS\n\nFILE\n  "<<f.path().filename().string()<<"\n  Format:          "<<crash_dump_format_name(r.format)<<"\n  Architecture:   "<<r.architecture_name<<"\n\nCRASH\n";if(r.exception_code)o<<"  Exception code:  0x"<<std::hex<<r.exception_code<<"\n";if(r.signal)o<<"  Signal:          "<<std::dec<<r.signal<<"\n";o<<"  Fault address:   0x"<<std::hex<<r.fault_address<<"\n  Crashing thread: "<<std::dec<<r.crashing_thread<<"\n\nSUMMARY\n  Threads:         "<<r.thread_count<<"\n  Modules:         "<<r.module_count<<"\n";if(!r.modules.empty()){o<<"\nMODULES\n";for(const auto&m:r.modules)o<<"  0x"<<std::hex<<m.base<<" + 0x"<<m.size<<"  "<<m.name<<"\n";}return o.str();
+
+std::string minidump_string(Bytes data, std::uint32_t rva) {
+    if (!range_valid(data, rva, 4)) return {};
+    const auto characters = read_u32(data, rva, false);
+    if (characters > std::numeric_limits<std::size_t>::max() / 2) return {};
+    const auto byte_count = std::uint64_t(characters) * 2;
+    if (!range_valid(data, std::uint64_t(rva) + 4, byte_count)) return {};
+
+    std::string text;
+    text.reserve(characters);
+    for (std::uint32_t i = 0; i < characters; ++i) {
+        const auto code_unit = read_u16(data, std::uint64_t(rva) + 4 + std::uint64_t(i) * 2, false);
+        text.push_back(code_unit < 128 ? static_cast<char>(code_unit) : '?');
+    }
+    return text;
 }
+
+Architecture elf_architecture(std::uint16_t machine) {
+    switch (machine) {
+    case 3: return Architecture::X86;
+    case 62: return Architecture::X86_64;
+    case 40: return Architecture::ARM;
+    case 183: return Architecture::ARM64;
+    case 243: return Architecture::RISCV64;
+    default: return Architecture::Unknown;
+    }
 }
+
+bool parse_minidump(Bytes data, CrashReport& report) {
+    if (data.size() < 32) return false;
+    const auto stream_count = read_u32(data, 8, false);
+    const auto directory_rva = read_u32(data, 12, false);
+    if (stream_count > 4096 || !range_valid(data, directory_rva, std::uint64_t(stream_count) * 12)) {
+        return false;
+    }
+
+    bool saw_stream = false;
+    for (std::uint32_t i = 0; i < stream_count; ++i) {
+        const auto entry = std::uint64_t(directory_rva) + std::uint64_t(i) * 12;
+        const auto type = read_u32(data, entry, false);
+        const auto size = read_u32(data, entry + 4, false);
+        const auto rva = read_u32(data, entry + 8, false);
+        if (!range_valid(data, rva, size)) continue;
+
+        if (type == 4 && size >= 4) {
+            const auto declared = read_u32(data, rva, false);
+            const auto count = std::min<std::uint32_t>(declared, 4096);
+            std::uint64_t cursor = std::uint64_t(rva) + 4;
+            report.modules.clear();
+            report.modules.reserve(count);
+            for (std::uint32_t j = 0; j < count; ++j) {
+                if (!range_valid(data, cursor, 108)) break;
+                CrashModule module;
+                module.base = read_u64(data, cursor, false);
+                module.size = read_u32(data, cursor + 8, false);
+                module.name = minidump_string(data, read_u32(data, cursor + 20, false));
+                report.modules.push_back(std::move(module));
+                cursor += 108;
+            }
+            report.module_count = static_cast<std::uint32_t>(report.modules.size());
+            saw_stream = true;
+        } else if (type == 3 && size >= 4) {
+            const auto declared = read_u32(data, rva, false);
+            const auto count = std::min<std::uint32_t>(declared, 4096);
+            std::uint64_t cursor = std::uint64_t(rva) + 4;
+            report.threads.clear();
+            report.threads.reserve(count);
+            for (std::uint32_t j = 0; j < count; ++j) {
+                if (!range_valid(data, cursor, 48)) break;
+                CrashThread thread;
+                thread.id = read_u32(data, cursor, false);
+                thread.stack_start = read_u64(data, cursor + 24, false);
+                thread.stack_size = read_u32(data, cursor + 32, false);
+                report.threads.push_back(thread);
+                cursor += 48;
+            }
+            report.thread_count = static_cast<std::uint32_t>(report.threads.size());
+            saw_stream = true;
+        } else if (type == 6 && size >= 168) {
+            report.crashing_thread = read_u32(data, rva, false);
+            report.exception_code = read_u32(data, rva + 8, false);
+            report.fault_address = read_u64(data, rva + 24, false);
+            saw_stream = true;
+        } else if (type == 7 && size >= 2) {
+            switch (read_u16(data, rva, false)) {
+            case 0: report.architecture = Architecture::X86; break;
+            case 9: report.architecture = Architecture::X86_64; break;
+            case 5: report.architecture = Architecture::ARM; break;
+            case 12: report.architecture = Architecture::ARM64; break;
+            default: report.architecture = Architecture::Unknown; break;
+            }
+            saw_stream = true;
+        }
+    }
+    return saw_stream;
+}
+
+bool parse_elf_core(Bytes data, CrashReport& report) {
+    if (data.size() < 20 || data[0] != std::byte{0x7f} ||
+        data[1] != std::byte{'E'} || data[2] != std::byte{'L'} ||
+        data[3] != std::byte{'F'}) {
+        return false;
+    }
+
+    const bool is64 = data[4] == std::byte{2};
+    const bool big_endian = data[5] == std::byte{2};
+    if (!is64 && data[4] != std::byte{1}) return false;
+    if (data[5] != std::byte{1} && !big_endian) return false;
+    if (read_u16(data, 16, big_endian) != 4) return false;
+
+    report.architecture = elf_architecture(read_u16(data, 18, big_endian));
+
+    const auto phoff = is64 ? read_u64(data, 32, big_endian)
+                            : read_u32(data, 28, big_endian);
+    const auto phentsize = read_u16(data, is64 ? 54 : 42, big_endian);
+    const auto phnum = read_u16(data, is64 ? 56 : 44, big_endian);
+    const auto minimum_phentsize = is64 ? 56u : 32u;
+    if (phnum > 4096 || phentsize < minimum_phentsize ||
+        !range_valid(data, phoff, std::uint64_t(phentsize) * phnum)) {
+        return false;
+    }
+
+    bool saw_note = false;
+    for (std::uint16_t i = 0; i < phnum; ++i) {
+        const auto program = phoff + std::uint64_t(i) * phentsize;
+        const auto type = read_u32(data, program, big_endian);
+        if (type != 4) continue;
+
+        const auto file_offset = is64 ? read_u64(data, program + 8, big_endian)
+                                      : read_u32(data, program + 4, big_endian);
+        const auto file_size = is64 ? read_u64(data, program + 32, big_endian)
+                                    : read_u32(data, program + 16, big_endian);
+        if (file_size < 12 || !range_valid(data, file_offset, file_size)) continue;
+
+        std::uint64_t cursor = file_offset;
+        const auto end = file_offset + file_size;
+        while (cursor <= end && end - cursor >= 12) {
+            const auto namesize = read_u32(data, cursor, big_endian);
+            const auto descsize = read_u32(data, cursor + 4, big_endian);
+            const auto note_type = read_u32(data, cursor + 8, big_endian);
+            if (namesize > 0x10000000u || descsize > 0x10000000u) break;
+
+            const auto name_padded = (std::uint64_t(namesize) + 3) & ~std::uint64_t(3);
+            const auto desc_padded = (std::uint64_t(descsize) + 3) & ~std::uint64_t(3);
+            if (end - cursor < 12 || name_padded > end - cursor - 12) break;
+            const auto after_name = cursor + 12 + name_padded;
+            if (desc_padded > end - after_name) break;
+            const auto descriptor = after_name;
+
+            if (note_type == 1) {
+                ++report.thread_count;
+            } else if (note_type == 0x53494749 && descsize >= 4) {
+                report.signal = read_u32(data, descriptor, big_endian);
+            }
+            saw_note = true;
+            cursor = descriptor + desc_padded;
+        }
+    }
+    return saw_note;
+}
+
+} // namespace
+
+const char* crash_dump_format_name(CrashDumpFormat format) {
+    switch (format) {
+    case CrashDumpFormat::WindowsMinidump: return "Windows minidump";
+    case CrashDumpFormat::ELFCore: return "ELF core dump";
+    default: return "unknown";
+    }
+}
+
+Result<CrashReport> analyze_crash_dump(const BinaryFile& file) {
+    CrashReport report;
+    const auto data = file.bytes();
+
+    if (data.size() >= 4 && data[0] == std::byte{'M'} &&
+        data[1] == std::byte{'D'} && data[2] == std::byte{'M'} &&
+        data[3] == std::byte{'P'}) {
+        report.format = CrashDumpFormat::WindowsMinidump;
+        if (!parse_minidump(data, report)) {
+            return Error{ErrorCode::InvalidBinary, "minidump header or stream directory is invalid"};
+        }
+    } else if (data.size() >= 20 && data[0] == std::byte{0x7f} &&
+               data[1] == std::byte{'E'} && data[2] == std::byte{'L'} &&
+               data[3] == std::byte{'F'} &&
+               (data[4] == std::byte{1} || data[4] == std::byte{2})) {
+        report.format = CrashDumpFormat::ELFCore;
+        if (!parse_elf_core(data, report)) {
+            return Error{ErrorCode::InvalidBinary, "ELF core program-note data is invalid"};
+        }
+    } else {
+        return Error{ErrorCode::UnsupportedFormat,
+                     "input is not a supported Windows minidump or ELF core dump"};
+    }
+
+    report.architecture_name = architecture_name(report.architecture);
+    return report;
+}
+
+std::string format_crash_report(const CrashReport& report,
+                                const BinaryFile& file,
+                                bool json) {
+    std::ostringstream out;
+    if (json) {
+        out << "{\n"
+            << "  \"schema_version\":7,\n"
+            << "  \"file\":\"" << json_escape(file.path().filename().string()) << "\",\n"
+            << "  \"format\":\"" << json_escape(crash_dump_format_name(report.format)) << "\",\n"
+            << "  \"architecture\":\"" << json_escape(report.architecture_name) << "\",\n"
+            << "  \"threads\":" << report.thread_count << ",\n"
+            << "  \"modules\":" << report.module_count << ",\n"
+            << "  \"exception_code\":" << report.exception_code << ",\n"
+            << "  \"signal\":" << report.signal << ",\n"
+            << "  \"fault_address\":\"" << hex_u64(report.fault_address) << "\",\n"
+            << "  \"crashing_thread\":" << report.crashing_thread << ",\n"
+            << "  \"module_list\":[";
+        for (std::size_t i = 0; i < report.modules.size(); ++i) {
+            if (i) out << ',';
+            const auto& module = report.modules[i];
+            out << "{\"base\":\"" << hex_u64(module.base) << "\",\"size\":"
+                << module.size << ",\"name\":\"" << json_escape(module.name) << "\"}";
+        }
+        out << "]\n}\n";
+        return out.str();
+    }
+
+    out << "BINX CRASH ANALYSIS\n\nFILE\n  "
+        << file.path().filename().string()
+        << "\n  Format:          " << crash_dump_format_name(report.format)
+        << "\n  Architecture:   " << report.architecture_name
+        << "\n\nCRASH\n";
+    if (report.exception_code) {
+        out << "  Exception code:  0x" << std::hex << report.exception_code << "\n";
+    }
+    if (report.signal) {
+        out << "  Signal:          " << std::dec << report.signal << "\n";
+    }
+    out << "  Fault address:   " << hex_u64(report.fault_address) << "\n"
+        << "  Crashing thread: " << report.crashing_thread
+        << "\n\nSUMMARY\n  Threads:         " << report.thread_count
+        << "\n  Modules:         " << report.module_count << "\n";
+
+    if (!report.modules.empty()) {
+        out << "\nMODULES\n";
+        for (const auto& module : report.modules) {
+            out << "  " << hex_u64(module.base) << " + " << hex_u64(module.size)
+                << "  " << module.name << "\n";
+        }
+    }
+    return out.str();
+}
+
+} // namespace binx

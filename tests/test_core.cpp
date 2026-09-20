@@ -9,12 +9,16 @@
 #include "binx/analysis/symbols.hpp"
 #include "binx/analysis/diff.hpp"
 #include "binx/analysis/crash.hpp"
-#include "binx/analysis/diff.hpp"
+#include "binx/analysis/report.hpp"
+#include "binx/core/text.hpp"
 #include <fstream>
+#include <filesystem>
+#include <system_error>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <iterator>
 using namespace binx;
 namespace {
 void p16(std::vector<std::byte>&b,std::size_t o,std::uint16_t v){b[o]=std::byte(v&255);b[o+1]=std::byte((v>>8)&255);}
@@ -85,16 +89,23 @@ int main(){
  auto dbgtest=std::filesystem::temp_directory_path()/"binx-symbol-test.bin";{std::ofstream sf(dbgtest,std::ios::binary);auto z=fixture();sf.write(reinterpret_cast<const char*>(z.data()),static_cast<std::streamsize>(z.size()));}auto bf=BinaryFile::open(dbgtest);assert(bf);auto sy=collect_symbols(bf.value());assert(sy);bool found=false;for(auto&s:sy.value())if(s.name=="GetProcAddress"&&s.kind==SymbolKind::Import)found=true;assert(found);auto di=collect_debug_info(bf.value());assert(di&&di.value().has_pdb&&di.value().pdb_guid.size()==36&&di.value().pdb_age==1);std::filesystem::remove(dbgtest);
  auto code=std::vector<std::byte>{std::byte{0x55},std::byte{0x48},std::byte{0x89},std::byte{0xE5},std::byte{0x90},std::byte{0xE8},std::byte{0x02},std::byte{0},std::byte{0},std::byte{0},std::byte{0xC3}};auto ds=disassemble_x86(code,0x1000,0,20);assert(ds&&ds.value().size()==5);assert(ds.value()[0].mnemonic=="push"&&ds.value()[1].mnemonic=="mov"&&ds.value()[2].mnemonic=="nop"&&ds.value()[3].mnemonic=="call"&&ds.value()[3].branch_target&&*ds.value()[3].branch_target==0x100b&&ds.value()[4].mnemonic=="ret");
  const auto abc=std::vector<std::byte>{std::byte{'a'},std::byte{'b'},std::byte{'c'}};auto h=hash_all(abc);assert(h);assert(h.value().md5=="900150983cd24fb0d6963f7d28e17f72");assert(h.value().sha1=="a9993e364706816aba3e25717850c26c9cd0d89d");assert(h.value().sha256=="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
- auto t1=std::filesystem::temp_directory_path()/"binx-diff-a.bin";auto t2=std::filesystem::temp_directory_path()/"binx-diff-b.bin";{std::ofstream fa(t1,std::ios::binary),fb(t2,std::ios::binary);fa<<"abcdef";fb<<"abXdefg";}auto ba=BinaryFile::open(t1);auto bb=BinaryFile::open(t2);assert(ba&&bb);auto dr=compare_binaries(ba.value(),bb.value());assert(dr&&dr.value().changed_bytes==1&&dr.value().added_bytes==1&&dr.value().removed_bytes==0&&dr.value().hunks.size()==1);auto sr=analyze_size(ba.value());assert(sr&&sr.value().file_size==6);auto rr=build_binary_report(ba.value());assert(rr&&rr.value().file_size==6&&rr.value().format==BinaryFormat::Unknown&&rr.value().dependencies.empty());std::filesystem::remove(t1);std::filesystem::remove(t2);
- auto crashp=std::filesystem::temp_directory_path()/"binx-v09-minidump.dmp";{
-  std::vector<std::byte>dmp(0x400);
+ auto t1=std::filesystem::temp_directory_path()/"binx-diff-a.bin";auto t2=std::filesystem::temp_directory_path()/"binx-diff-b.bin";{std::ofstream fa(t1,std::ios::binary),fb(t2,std::ios::binary);fa<<"abcdef";fb<<"abXdefg";}auto ba=BinaryFile::open(t1);auto bb=BinaryFile::open(t2);assert(ba&&bb);auto dr=compare_binaries(ba.value(),bb.value());assert(dr&&dr.value().changed_bytes==1&&dr.value().added_bytes==1&&dr.value().removed_bytes==0&&dr.value().hunks.size()==1);auto sr=analyze_size(ba.value());assert(sr&&sr.value().file_size==6);auto rr=build_binary_report(ba.value());assert(rr&&rr.value().file_size==6&&rr.value().format==BinaryFormat::Unknown&&rr.value().dependencies.empty());auto rj=format_binary_report(rr.value(),true);assert(rj.find("\\\"schema_version\\\":5")!=std::string::npos);assert(json_escape("\n")== "\\n");std::filesystem::remove(t1);std::filesystem::remove(t2);
+ auto crashp=std::filesystem::temp_directory_path()/"binx-v1-minidump.dmp";{
+  std::vector<std::byte>dmp(0x500);
   dmp[0]=std::byte{'M'};dmp[1]=std::byte{'D'};dmp[2]=std::byte{'M'};dmp[3]=std::byte{'P'};
-  p32(dmp,8,2);p32(dmp,12,32);p32(dmp,16,7);p32(dmp,20,2);p32(dmp,24,0);
-  p32(dmp,0x20,7);p32(dmp,0x24,2);p32(dmp,0x28,0x200);p32(dmp,0x2c,6);p32(dmp,0x30,168);p32(dmp,0x34,0x220);
-  p16(dmp,0x200,9);p32(dmp,0x220,42);p32(dmp,0x228,0xC0000005u);p64(dmp,0x238,0x140012345ull);
+  p32(dmp,8,4);p32(dmp,12,32);p32(dmp,16,7);p32(dmp,20,2);p32(dmp,24,0);
+  p32(dmp,0x20,7);p32(dmp,0x24,2);p32(dmp,0x28,0x200);
+  p32(dmp,0x2c,6);p32(dmp,0x30,168);p32(dmp,0x34,0x220);
+  p32(dmp,0x38,4);p32(dmp,0x3c,112);p32(dmp,0x40,0x2d0);
+  p32(dmp,0x44,3);p32(dmp,0x48,52);p32(dmp,0x4c,0x350);
+  p16(dmp,0x200,9);
+  p32(dmp,0x220,42);p32(dmp,0x228,0xC0000005u);p64(dmp,0x238,0x140012345ull);
+  p32(dmp,0x2d0,1);p64(dmp,0x2d4,0x140000000ull);p32(dmp,0x2dc,0x2000);p32(dmp,0x2e8,0x400);
+  p32(dmp,0x350,1);p32(dmp,0x354,42);p64(dmp,0x36c,0x7000ull);p32(dmp,0x374,0x100);
+  p32(dmp,0x400,3);dmp[0x404]=std::byte{'m'};dmp[0x406]=std::byte{'o'};dmp[0x408]=std::byte{'d'};
   std::ofstream df(crashp,std::ios::binary);df.write(reinterpret_cast<const char*>(dmp.data()),static_cast<std::streamsize>(dmp.size()));
  }
- auto cf=BinaryFile::open(crashp);assert(cf);auto cr=analyze_crash_dump(cf.value());assert(cr&&cr.value().format==CrashDumpFormat::WindowsMinidump&&cr.value().architecture==Architecture::X86_64&&cr.value().exception_code==0xC0000005u&&cr.value().fault_address==0x140012345ull&&cr.value().crashing_thread==42);
+ auto cf=BinaryFile::open(crashp);assert(cf);auto cr=analyze_crash_dump(cf.value());assert(cr&&cr.value().format==CrashDumpFormat::WindowsMinidump&&cr.value().architecture==Architecture::X86_64&&cr.value().exception_code==0xC0000005u&&cr.value().fault_address==0x140012345ull&&cr.value().crashing_thread==42&&cr.value().thread_count==1&&cr.value().module_count==1&&cr.value().threads[0].stack_start==0x7000ull&&cr.value().modules[0].name=="mod");
  std::filesystem::remove(crashp);
  auto corep=std::filesystem::temp_directory_path()/"binx-v09-core";{
   std::vector<std::byte>core(0x300);core[0]=std::byte{0x7f};core[1]=std::byte{'E'};core[2]=std::byte{'L'};core[3]=std::byte{'F'};core[4]=std::byte{2};core[5]=std::byte{1};core[6]=std::byte{1};
@@ -104,5 +115,14 @@ int main(){
  }
  auto cof=BinaryFile::open(corep);assert(cof);auto cor=analyze_crash_dump(cof.value());assert(cor&&cor.value().format==CrashDumpFormat::ELFCore&&cor.value().architecture==Architecture::X86_64&&cor.value().thread_count==1&&cor.value().signal==11);
  std::filesystem::remove(corep);
+ auto malformed=std::filesystem::temp_directory_path()/"binx-v1-malformed.dmp";
+ {
+  std::vector<std::byte>bad(32);
+  bad[0]=std::byte{'M'};bad[1]=std::byte{'D'};bad[2]=std::byte{'M'};bad[3]=std::byte{'P'};
+  p32(bad,8,1);p32(bad,12,31);
+  std::ofstream out_bad(malformed,std::ios::binary);
+  out_bad.write(reinterpret_cast<const char*>(bad.data()),static_cast<std::streamsize>(bad.size()));
+ }
+ auto mbad=BinaryFile::open(malformed);assert(mbad);auto malformed_result=analyze_crash_dump(mbad.value());assert(!malformed_result&&malformed_result.error().code==ErrorCode::InvalidBinary);std::filesystem::remove(malformed);
  return 0;
 }
