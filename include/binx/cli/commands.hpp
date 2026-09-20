@@ -9,6 +9,8 @@ bool is_elf_format(BinaryFormat format);
 
 bool is_pe_command(std::string_view command);
 bool is_elf_command(std::string_view command);
+bool is_pe_only_command(std::string_view command);
+bool is_elf_only_command(std::string_view command);
 bool is_analysis_command(std::string_view command);
 bool is_diff_command(std::string_view command);
 bool is_dependency_command(std::string_view command);

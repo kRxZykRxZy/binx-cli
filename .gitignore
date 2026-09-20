@@ -19,3 +19,7 @@ compile_commands.json
 *.dylib
 *.exe
 *.pdb
+
+# Committed cross-platform executable fixtures
+!tests/fixtures/executables/
+!tests/fixtures/executables/*.exe

@@ -21,6 +21,14 @@ bool is_elf_command(std::string_view c) {
            c == "relocations";
 }
 
+bool is_pe_only_command(std::string_view c) {
+    return c == "imports" || c == "exports" || c == "resources";
+}
+
+bool is_elf_only_command(std::string_view c) {
+    return c == "segments" || c == "dynamic" || c == "notes";
+}
+
 bool is_analysis_command(std::string_view c) {
     return c == "strings" || c == "hexdump" || c == "search" ||
            c == "regions" || c == "size";

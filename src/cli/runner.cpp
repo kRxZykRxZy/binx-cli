@@ -115,15 +115,18 @@ Result<int> run_format_specific(const Options& o, const BinaryFile& file) {
         return emit_result(format_info(file, o.json, o.command == "inspect"), o);
     }
 
+    if (is_pe_only_command(o.command) && !is_pe_format(format)) {
+        return Error{ErrorCode::UnsupportedFormat, "command requires a PE image"};
+    }
+    if (is_elf_only_command(o.command) && !is_elf_format(format)) {
+        return Error{ErrorCode::UnsupportedFormat, "command requires an ELF image"};
+    }
+
     if (is_elf_format(format)) {
         auto elf = parse_elf_image(file.bytes());
         if (!elf) return elf.error();
         return emit_result(
             format_elf_command(elf.value(), o.command, o.json, o.command == "inspect"), o);
-    }
-
-    if (is_elf_command(o.command) && !is_pe_command(o.command)) {
-        return Error{ErrorCode::UnsupportedFormat, "command requires an ELF image"};
     }
 
     if (o.command == "inspect" && !is_pe_format(format)) {
