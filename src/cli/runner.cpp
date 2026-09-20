@@ -115,7 +115,7 @@ Result<int> run_format_specific(const Options& o, const BinaryFile& file) {
         return emit_result(format_info(file, o.json, o.command == "inspect"), o);
     }
 
-    if (is_elf(format)) {
+    if (is_elf_format(format)) {
         auto elf = parse_elf_image(file.bytes());
         if (!elf) return elf.error();
         return emit_result(
@@ -126,7 +126,7 @@ Result<int> run_format_specific(const Options& o, const BinaryFile& file) {
         return Error{ErrorCode::UnsupportedFormat, "command requires an ELF image"};
     }
 
-    if (o.command == "inspect" && !is_pe(format)) {
+    if (o.command == "inspect" && !is_pe_format(format)) {
         return emit_result(format_info(file, o.json, true), o);
     }
 
