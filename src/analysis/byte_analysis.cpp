@@ -6,7 +6,6 @@
 namespace binx {
 namespace {
 bool printable(unsigned char c){return c>=0x20&&c<=0x7e;}
-std::string utf8_from_codepoint(std::uint32_t cp){std::string s;if(cp<=0x7f)s.push_back(char(cp));else if(cp<=0x7ff){s.push_back(char(0xc0|(cp>>6)));s.push_back(char(0x80|(cp&63)));}else if(cp<=0xffff){s.push_back(char(0xe0|(cp>>12)));s.push_back(char(0x80|((cp>>6)&63)));s.push_back(char(0x80|(cp&63)));}else{s.push_back(char(0xf0|(cp>>18)));s.push_back(char(0x80|((cp>>12)&63)));s.push_back(char(0x80|((cp>>6)&63)));s.push_back(char(0x80|(cp&63)));}return s;}
 }
 const char* string_encoding_name(StringEncoding e){switch(e){case StringEncoding::ASCII:return "ascii";case StringEncoding::UTF8:return "utf8";case StringEncoding::UTF16LE:return "utf16le";default:return "utf16be";}}
 const char* region_kind_name(RegionKind k){switch(k){case RegionKind::Zero:return "zero";case RegionKind::Printable:return "printable";default:return "binary";}}
