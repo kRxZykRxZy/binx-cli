@@ -7,7 +7,7 @@
 #include "binx/error.hpp"
 namespace binx {
 struct DiffHunk { std::uint64_t offset=0, length=0, old_offset=0, new_offset=0; };
-struct SectionDiff { std::string name; std::uint64_t old_size=0, new_size=0, delta=0; std::uint64_t changed_bytes=0; bool added=false, removed=false; };
+struct SectionDiff { std::string name; std::uint64_t old_size=0, new_size=0; std::int64_t delta=0; std::uint64_t changed_bytes=0; bool added=false, removed=false; };
 struct BinaryDiff {
  std::uint64_t old_size=0,new_size=0,common_size=0,changed_bytes=0,added_bytes=0,removed_bytes=0;
  double similarity=0.0;

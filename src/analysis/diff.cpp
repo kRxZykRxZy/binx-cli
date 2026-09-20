@@ -7,7 +7,7 @@
 #include <unordered_map>
 namespace binx {
 namespace {
-std::string esc(const std::string&s){std::string o;for(char c:s){unsigned char u=static_cast<unsigned char>(c);if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\"";else if(u<0x20){o+=' ';}else o+=c;}return o;}
+std::string esc(const std::string&s){std::string o;for(char c:s){unsigned char u=static_cast<unsigned char>(c);if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\\\";else if(u<0x20){o+=' ';}else o+=c;}return o;}
 std::string hx(std::uint64_t v){std::ostringstream o;o<<"0x"<<std::hex<<std::uppercase<<v;return o.str();}
 struct Sec {std::string name;std::uint64_t off=0,size=0,vsize=0;std::string kind;};
 std::vector<Sec> secs(const BinaryFile&f){
