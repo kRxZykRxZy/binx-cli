@@ -1,7 +1,11 @@
 #pragma once
 #include <string_view>
+#include "binx/core/binary.hpp"
 
 namespace binx {
+
+bool is_pe_format(BinaryFormat format);
+bool is_elf_format(BinaryFormat format);
 
 bool is_pe_command(std::string_view command);
 bool is_elf_command(std::string_view command);
