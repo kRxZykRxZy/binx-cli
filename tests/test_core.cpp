@@ -41,9 +41,13 @@ std::vector<std::byte> elf_fixture(){
  p32(b,0x380,25);b[0x384]=std::byte{0x12};b[0x385]=std::byte{0};p16(b,0x386,1);p64(b,0x388,0x400000);p64(b,0x390,4);
  return b;
 }
+std::vector<std::byte> elf_be_fixture(){
+ std::vector<std::byte>b(64);b[0]=std::byte{0x7f};b[1]=std::byte{'E'};b[2]=std::byte{'L'};b[3]=std::byte{'F'};b[4]=std::byte{1};b[5]=std::byte{2};b[6]=std::byte{1};
+ b[16]=std::byte{0};b[17]=std::byte{2};b[18]=std::byte{0};b[19]=std::byte{40};b[20]=std::byte{0};b[21]=std::byte{0};b[22]=std::byte{0};b[23]=std::byte{1};b[24]=std::byte{0};b[25]=std::byte{0};b[26]=std::byte{0};b[27]=std::byte{0};return b;
+}
 int main(){
  std::vector<std::byte>d={std::byte{0x78},std::byte{0x56},std::byte{0x34},std::byte{0x12},std::byte{1},std::byte{2}};ByteReader r(d);assert(r.u32_le()==0x12345678u);assert(r.u16_be()==0x0102u);bool threw=false;try{r.u8();}catch(...){threw=true;}assert(threw);
- auto ef=elf_fixture();auto ei=parse_elf_image(ef);assert(ei);assert(ei.value().elf_class==ELFClass::ELF64&&ei.value().machine==62&&ei.value().entry==0x400000);assert(ei.value().segments.size()==1&&ei.value().sections.size()==4);assert(ei.value().symbols.size()==1&&ei.value().symbols[0].name=="func");auto emd=detect_metadata(ef);assert(emd.format==BinaryFormat::ELF64&&emd.architecture==Architecture::X86_64);
+ auto be=elf_be_fixture();auto bei=parse_elf_image(be);assert(bei&&bei.value().endianness==Endianness::Big&&bei.value().elf_class==ELFClass::ELF32&&bei.value().machine==40);auto bad=std::vector<std::byte>{std::byte{0x7f},std::byte{'E'},std::byte{'L'},std::byte{'F'},std::byte{2}};auto br=parse_elf_image(bad);assert(!br);auto ef=elf_fixture();auto ei=parse_elf_image(ef);assert(ei);assert(ei.value().elf_class==ELFClass::ELF64&&ei.value().machine==62&&ei.value().entry==0x400000);assert(ei.value().segments.size()==1&&ei.value().sections.size()==4);assert(ei.value().symbols.size()==1&&ei.value().symbols[0].name=="func");auto emd=detect_metadata(ef);assert(emd.format==BinaryFormat::ELF64&&emd.architecture==Architecture::X86_64);
  auto f=fixture();auto md=detect_metadata(f);assert(md.format==BinaryFormat::PE64&&md.architecture==Architecture::X86_64);auto pe=parse_pe(f);assert(pe);const auto&im=pe.value();assert(im.headers.coff.number_of_sections==3&&im.sections.size()==3);assert(im.mapper.rva_to_file_offset(0x1000).value()==0x400);assert(im.headers.entry_point_file_offset&&*im.headers.entry_point_file_offset==0x400);
  assert(im.imports&&im.imports->modules.size()==1&&im.imports->modules[0].symbols.size()==1&&im.imports->modules[0].symbols[0].name&&*im.imports->modules[0].symbols[0].name=="GetProcAddress");
  assert(im.exports&&im.exports->functions.size()==1&&im.exports->functions[0].name&&*im.exports->functions[0].name=="Init");
