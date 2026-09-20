@@ -74,7 +74,6 @@ Architecture elf_architecture(std::uint16_t machine) {
     case 40: return Architecture::ARM;
     case 183: return Architecture::ARM64;
     case 243: return Architecture::RISCV64;
-    case 258: return Architecture::RISCV64;
     default: return Architecture::Unknown;
     }
 }
