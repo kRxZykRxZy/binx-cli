@@ -7,7 +7,8 @@ namespace binx {
 std::string json_escape(std::string_view value) {
     std::string out;
     out.reserve(value.size());
-    for (unsigned char c : value) {
+    for (const char raw : value) {
+        const auto c = static_cast<unsigned char>(raw);
         switch (c) {
         case '"': out += "\\""; break;
         case '\\': out += "\\\\"; break;
