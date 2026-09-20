@@ -15,7 +15,6 @@
 
 namespace binx {
 namespace {
-std::uint16_t le16(const std::byte*p){return std::uint16_t(std::to_integer<unsigned char>(p[0]))|(std::uint16_t(std::to_integer<unsigned char>(p[1]))<<8);}
 std::uint32_t le32(const std::byte*p){return std::uint32_t(std::to_integer<unsigned char>(p[0]))|(std::uint32_t(std::to_integer<unsigned char>(p[1]))<<8)|(std::uint32_t(std::to_integer<unsigned char>(p[2]))<<16)|(std::uint32_t(std::to_integer<unsigned char>(p[3]))<<24);}
 std::uint32_t be32(const std::byte*p){return std::uint32_t(std::to_integer<unsigned char>(p[0]))<<24|(std::uint32_t(std::to_integer<unsigned char>(p[1]))<<16)|(std::uint32_t(std::to_integer<unsigned char>(p[2]))<<8)|std::uint32_t(std::to_integer<unsigned char>(p[3]));}
 std::uint64_t le64(const std::byte*p){return std::uint64_t(le32(p))|(std::uint64_t(le32(p+4))<<32);}
