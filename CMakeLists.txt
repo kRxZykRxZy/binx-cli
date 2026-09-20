@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(binx VERSION 0.2.0 LANGUAGES CXX)
+project(binx VERSION 0.3.0 LANGUAGES CXX)
 include(CTest)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

@@ -6,13 +6,23 @@ The CLI command is binx.
 
 ## Current release
 
-v0.2.0 — Deep PE Inspector
+v0.3.0 — Deep ELF Inspector
 
-v0.2 adds a real PE32/PE32+ analysis engine on top of the safe v0.1 foundation.
+v0.3 adds a real ELF32/ELF64 analysis engine alongside the v0.2 PE engine.
 
 ### v0.2 features
 
 - PE32 and PE32+ header parsing
+- ELF32 and ELF64 header parsing
+- little-endian and big-endian ELF support
+- ELF section and program-header parsing
+- ELF interpreter detection
+- ELF symbol-table parsing
+- ELF dynamic-table parsing
+- ELF note parsing
+- ELF REL and RELA relocation parsing
+- ELF machine/type/section/segment/symbol decoding
+- ELF-specific structured JSON schema v3
 - COFF and optional-header decoding
 - central RVA to file-offset mapping
 - section enumeration and validation
@@ -64,6 +74,10 @@ Linux/macOS:
     binx exports app.dll
     binx resources app.exe
     binx relocations app.exe
+binx segments app
+binx symbols app
+binx dynamic app
+binx notes app
     binx hash app.exe
 
     binx inspect app.exe --json
