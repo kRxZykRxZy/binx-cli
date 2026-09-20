@@ -1,6 +1,7 @@
 #include "binx/analysis/report.hpp"
 #include "binx/analysis/byte_analysis.hpp"
 #include "binx/analysis/dependencies.hpp"
+#include "binx/analysis/diff.hpp"
 #include "binx/core/text.hpp"
 #include "binx/analysis/symbols.hpp"
 #include "binx/formats/detect.hpp"
