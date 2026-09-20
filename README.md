@@ -6,9 +6,9 @@ The CLI command is binx.
 
 ## Current release
 
-v0.3.0 — Deep ELF Inspector
+v0.4.0 — Strings, Hex & Search
 
-v0.3 adds a real ELF32/ELF64 analysis engine alongside the v0.2 PE engine.
+v0.4 adds format-independent strings, hexdump, search and binary-region analysis on top of the PE/ELF engines.
 
 ### v0.2 features
 
@@ -39,7 +39,7 @@ v0.3 adds a real ELF32/ELF64 analysis engine alongside the v0.2 PE engine.
 - structured diagnostics
 - partial-parser recovery
 - structured JSON schema v2
-- info, inspect, sections, imports, exports, resources, relocations and hash commands
+- info, inspect, sections, imports, exports, resources, relocations, strings, hexdump, search, regions and hash commands
 - deterministic terminal output
 - Windows CNG hashing and OpenSSL hashing on non-Windows builds
 - malformed-input coverage and synthetic PE integration tests
@@ -78,6 +78,11 @@ binx segments app
 binx symbols app
 binx dynamic app
 binx notes app
+binx strings app --encoding all --min-length 5
+binx hexdump app --offset 0x100 --length 256
+binx search app --hex "48 8B ?? FF"
+binx search app --text "needle"
+binx regions app
     binx hash app.exe
 
     binx inspect app.exe --json

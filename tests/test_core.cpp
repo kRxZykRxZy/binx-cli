@@ -3,6 +3,7 @@
 #include "binx/formats/detect.hpp"
 #include "binx/formats/elf.hpp"
 #include "binx/hashing/hasher.hpp"
+#include "binx/analysis/byte_analysis.hpp"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -55,6 +56,14 @@ int main(){
  assert(im.resources&&im.resources->items.size()==1&&im.resources->items[0].language==1033);
  assert(im.tls&&im.tls->callbacks.size()==1&&im.tls->callbacks[0].rva&&*im.tls->callbacks[0].rva==0x1100);
  assert(im.debug_entries.size()==1&&im.debug_entries[0].codeview&&im.debug_entries[0].codeview->pdb_path=="fixture.pdb");
+ const std::vector<std::byte> analysis={std::byte{'H'},std::byte{'e'},std::byte{'l'},std::byte{'l'},std::byte{'o'},std::byte{0},std::byte{'H'},std::byte{'i'},std::byte{0},std::byte{0xFF},std::byte{'X'},std::byte{'Y'},std::byte{'Z'}};
+ auto ascii=extract_strings(analysis,StringEncoding::ASCII,4);assert(ascii.size()==1&&ascii[0].text=="Hello"&&ascii[0].offset==0);
+ auto u16=std::vector<std::byte>{std::byte{'H'},std::byte{0},std::byte{'i'},std::byte{0},std::byte{0},std::byte{0}};auto us=extract_strings(u16,StringEncoding::UTF16LE,2);assert(us.size()==1&&us[0].text=="Hi"&&us[0].offset==0);
+ auto hd=make_hexdump(analysis,1,4,2);assert(hd.size()==2&&hd[0].offset==1&&hd[0].bytes.size()==2);
+ auto needle=search_text(analysis,"Hello",StringEncoding::UTF8);assert(needle.size()==1&&needle[0].offset==0);
+ std::vector<int>hp;assert(parse_hex_pattern("48 65 ?? 6c 6f",hp)&&hp.size()==5&&hp[2]==-1);assert(parse_hex_pattern("4865??6c6f",hp)&&hp.size()==5);
+ auto matches=search_bytes(analysis,std::span<const std::byte>(analysis.data(),5));assert(matches.size()==1&&matches[0].offset==0);
+ auto regs=classify_regions(analysis,2);assert(!regs.empty());
  const auto abc=std::vector<std::byte>{std::byte{'a'},std::byte{'b'},std::byte{'c'}};auto h=hash_all(abc);assert(h);assert(h.value().md5=="900150983cd24fb0d6963f7d28e17f72");assert(h.value().sha1=="a9993e364706816aba3e25717850c26c9cd0d89d");assert(h.value().sha256=="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
  return 0;
 }

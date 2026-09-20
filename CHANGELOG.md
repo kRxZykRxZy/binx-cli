@@ -2,28 +2,26 @@
 
 All notable BinX changes are documented here.
 
+## v0.4.0 - Strings, Hex & Search
+
+- Added format-independent byte analysis.
+- Added ASCII, UTF-8 and UTF-16LE/UTF-16BE string extraction with offsets and minimum-length filtering.
+- Added bounded hexdump with configurable offset, length and width.
+- Added text search and wildcard hex-byte search.
+- Added decimal and 0x-prefixed numeric CLI options.
+- Added binary-region classification for zero, printable and binary runs.
+- Added JSON schema version 4 for analysis output.
+- Added malformed/boundary-focused unit coverage for strings, UTF-16, hexdump, search and patterns.
+- Preserved local-only operation: no execution, networking, telemetry or cloud dependency.
+
 ## v0.3.0 - Deep ELF Inspector
 
-- Added a structured ELF32/ELF64 parser.
-- Added little-endian and big-endian ELF decoding.
-- Added ELF file-header validation and architecture decoding.
-- Added program-header parsing and PT_INTERP detection.
-- Added section-header parsing and section-name resolution.
-- Added symbol-table and dynamic-symbol parsing.
-- Added dynamic-table parsing.
-- Added ELF note parsing.
-- Added REL and RELA relocation parsing with symbol association.
-- Added ELF section/segment/symbol/dynamic/note/relocation commands.
-- Added ELF JSON schema v3.
-- Added malformed/truncated ELF diagnostics and bounded parsing.
-- Kept PE analysis and v0.1 hashing behavior intact.
-- Kept BinX local-only with no execution, network access, telemetry or cloud dependency.
+- Added ELF32/ELF64 parsing, sections, segments, symbols, dynamic entries, notes and relocations.
 
 ## v0.2.0 - Deep PE Inspector
 
-- Structured PE32/PE32+ analysis, sections, imports, exports, relocations, resources, TLS and debug metadata.
-- Added structured diagnostics and JSON schema v2.
+- Added PE32/PE32+ analysis, imports, exports, resources, relocations, TLS and debug metadata.
 
 ## v0.1.0 - Foundation
 
-- Added safe binary reading, format detection, metadata, hashing, JSON output and stable CLI errors.
+- Added safe binary reading, format detection, metadata, hashing and stable CLI errors.
