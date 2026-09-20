@@ -4,6 +4,8 @@
 #include "binx/formats/elf.hpp"
 #include "binx/hashing/hasher.hpp"
 #include "binx/analysis/byte_analysis.hpp"
+#include "binx/analysis/dependencies.hpp"
+#include <fstream>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -46,6 +48,11 @@ std::vector<std::byte> elf_be_fixture(){
  std::vector<std::byte>b(64);b[0]=std::byte{0x7f};b[1]=std::byte{'E'};b[2]=std::byte{'L'};b[3]=std::byte{'F'};b[4]=std::byte{1};b[5]=std::byte{2};b[6]=std::byte{1};
  b[16]=std::byte{0};b[17]=std::byte{2};b[18]=std::byte{0};b[19]=std::byte{40};b[20]=std::byte{0};b[21]=std::byte{0};b[22]=std::byte{0};b[23]=std::byte{1};b[24]=std::byte{0};b[25]=std::byte{0};b[26]=std::byte{0};b[27]=std::byte{0};return b;
 }
+std::vector<std::byte> macho_dependency_fixture(){
+ std::vector<std::byte>b(128);b[0]=std::byte{0xcf};b[1]=std::byte{0xfa};b[2]=std::byte{0xed};b[3]=std::byte{0xfe};
+ p32(b,4,0x01000007u);p32(b,8,3);p32(b,12,2);p32(b,16,1);p32(b,20,40);p32(b,24,0);
+ p32(b,32,0xcu);p32(b,36,40);p32(b,40,24);put(b,56,"/usr/lib/libSystem.B.dylib");return b;
+}
 int main(){
  std::vector<std::byte>d={std::byte{0x78},std::byte{0x56},std::byte{0x34},std::byte{0x12},std::byte{1},std::byte{2}};ByteReader r(d);assert(r.u32_le()==0x12345678u);assert(r.u16_be()==0x0102u);bool threw=false;try{r.u8();}catch(...){threw=true;}assert(threw);
  auto be=elf_be_fixture();auto bei=parse_elf_image(be);assert(bei&&bei.value().endianness==Endianness::Big&&bei.value().elf_class==ELFClass::ELF32&&bei.value().machine==40);auto bad=std::vector<std::byte>{std::byte{0x7f},std::byte{'E'},std::byte{'L'},std::byte{'F'},std::byte{2}};auto br=parse_elf_image(bad);assert(!br);auto ef=elf_fixture();auto ei=parse_elf_image(ef);assert(ei);assert(ei.value().elf_class==ELFClass::ELF64&&ei.value().machine==62&&ei.value().entry==0x400000);assert(ei.value().segments.size()==1&&ei.value().sections.size()==4);assert(ei.value().symbols.size()==1&&ei.value().symbols[0].name=="func");auto emd=detect_metadata(ef);assert(emd.format==BinaryFormat::ELF64&&emd.architecture==Architecture::X86_64);
@@ -64,6 +71,12 @@ int main(){
  std::vector<int>hp;assert(parse_hex_pattern("48 65 ?? 6c 6f",hp)&&hp.size()==5&&hp[2]==-1);assert(parse_hex_pattern("4865??6c6f",hp)&&hp.size()==5);
  auto matches=search_bytes(analysis,std::span<const std::byte>(analysis.data(),5));assert(matches.size()==1&&matches[0].offset==0);
  auto regs=classify_regions(analysis,2);assert(!regs.empty());
+ auto mtemp=std::filesystem::temp_directory_path()/"binx-v05-tests";std::error_code mec;std::filesystem::create_directories(mtemp,mec);auto rootp=mtemp/"root.exe";auto depb=mtemp/"KERNEL32.dll";{std::ofstream froot(rootp,std::ios::binary);auto x=fixture();froot.write(reinterpret_cast<const char*>(x.data()),static_cast<std::streamsize>(x.size()));std::ofstream fd(depb,std::ios::binary);x=fixture();p32(x,0x98+112+8,0);fd.write(reinterpret_cast<const char*>(x.data()),static_cast<std::streamsize>(x.size()));}
+ auto root=BinaryFile::open(rootp);assert(root);auto direct=extract_dependencies(root.value());assert(direct.size()==1&&direct[0].name=="KERNEL32.dll"&&direct[0].kind==DependencyKind::PEImport);
+ auto graph=build_dependency_graph(rootp,{},2,8);assert(graph&&graph.value().nodes.size()==2&&graph.value().edges.size()==1&&graph.value().unresolved.empty()&&graph.value().cycles.empty());
+ auto dot=dependency_graph_dot(graph.value());assert(dot.find("KERNEL32.dll")!=std::string::npos);
+ std::filesystem::remove_all(mtemp,mec);
+ auto mtemp2=std::filesystem::temp_directory_path()/"binx-v05-macho-tests";std::filesystem::create_directories(mtemp2,mec);auto mp=mtemp2/"app";{std::ofstream mf(mp,std::ios::binary);auto x=macho_dependency_fixture();mf.write(reinterpret_cast<const char*>(x.data()),static_cast<std::streamsize>(x.size()));}auto mb=BinaryFile::open(mp);assert(mb&&mb.value().metadata().format==BinaryFormat::MachO64);auto mdps=extract_dependencies(mb.value());assert(mdps.size()==1&&mdps[0].name=="/usr/lib/libSystem.B.dylib"&&mdps[0].kind==DependencyKind::MachODylib);std::filesystem::remove_all(mtemp2,mec);
  const auto abc=std::vector<std::byte>{std::byte{'a'},std::byte{'b'},std::byte{'c'}};auto h=hash_all(abc);assert(h);assert(h.value().md5=="900150983cd24fb0d6963f7d28e17f72");assert(h.value().sha1=="a9993e364706816aba3e25717850c26c9cd0d89d");assert(h.value().sha256=="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
  return 0;
 }

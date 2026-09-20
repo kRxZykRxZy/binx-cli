@@ -6,9 +6,9 @@ The CLI command is binx.
 
 ## Current release
 
-v0.4.0 — Strings, Hex & Search
+v0.5.0 — Dependency Analysis
 
-v0.4 adds format-independent strings, hexdump, search and binary-region analysis on top of the PE/ELF engines.
+v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recursive resolution and dependency graphs.
 
 ### v0.2 features
 
@@ -39,7 +39,7 @@ v0.4 adds format-independent strings, hexdump, search and binary-region analysis
 - structured diagnostics
 - partial-parser recovery
 - structured JSON schema v2
-- info, inspect, sections, imports, exports, resources, relocations, strings, hexdump, search, regions and hash commands
+- info, inspect, sections, imports, exports, resources, relocations, segments, symbols, dynamic, notes, strings, hexdump, search, regions, deps, graph and hash commands
 - deterministic terminal output
 - Windows CNG hashing and OpenSSL hashing on non-Windows builds
 - malformed-input coverage and synthetic PE integration tests
@@ -93,6 +93,6 @@ binx regions app
 
 ## Roadmap
 
-v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> v0.5 dependencies -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> v0.8 diff/size -> v0.9 crash analysis -> v0.95 unified analysis/reporting -> v1.0 complete local toolkit.
+v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> **v0.5 dependencies** -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> v0.8 diff/size -> v0.9 crash analysis -> v0.95 unified analysis/reporting -> v1.0 complete local toolkit.
 
 Cloud/API remains post-v1.

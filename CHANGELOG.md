@@ -2,17 +2,22 @@
 
 All notable BinX changes are documented here.
 
+## v0.5.0 - Dependency Analysis
+
+- Added unified dependency extraction for PE imports, ELF DT_NEEDED and Mach-O dylib load commands.
+- Added direct dependency CLI commands: deps and dependencies.
+- Added recursive dependency graph construction with deterministic filesystem resolution.
+- Added configurable search paths, maximum depth and maximum node count.
+- Added cycle detection and unresolved-dependency reporting.
+- Added Graphviz DOT graph output.
+- Added JSON schema version 5 for dependency results and graphs.
+- Added loader-relative dependency resolution for @loader_path, @executable_path and $ORIGIN forms.
+- Made ELF dependency discovery work from PT_DYNAMIC/PT_LOAD without requiring section headers.
+- Added dependency-analysis tests and kept the no-execution/no-network architecture.
+
 ## v0.4.0 - Strings, Hex & Search
 
-- Added format-independent byte analysis.
-- Added ASCII, UTF-8 and UTF-16LE/UTF-16BE string extraction with offsets and minimum-length filtering.
-- Added bounded hexdump with configurable offset, length and width.
-- Added text search and wildcard hex-byte search.
-- Added decimal and 0x-prefixed numeric CLI options.
-- Added binary-region classification for zero, printable and binary runs.
-- Added JSON schema version 4 for analysis output.
-- Added malformed/boundary-focused unit coverage for strings, UTF-16, hexdump, search and patterns.
-- Preserved local-only operation: no execution, networking, telemetry or cloud dependency.
+- Added format-independent byte analysis, strings, hexdump, search and region classification.
 
 ## v0.3.0 - Deep ELF Inspector
 
