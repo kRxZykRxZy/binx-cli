@@ -16,8 +16,9 @@
 #include "binx/formats/detect.hpp"
 #include "binx/hashing/hasher.hpp"
 #include "binx/core/binary.hpp"
-#include <charconv>
+#include <cstddef>
 #include <iostream>
+#include <utility>
 #include <vector>
 
 namespace binx {
