@@ -6,7 +6,7 @@ namespace binx {
 Metadata detect_metadata(std::span<const std::byte> data) {
     Metadata m;
     if (identify_pe(data, m)) return m;
-    if (parse_elf(data, m)) return m;
+    if (auto er = parse_elf_image(data); er) { const auto& e = er.value(); m.platform="ELF"; m.format=e.elf_class==ELFClass::ELF64?BinaryFormat::ELF64:BinaryFormat::ELF32; m.endianness=e.endianness; m.raw_machine=e.machine; m.entry_point=e.entry; m.section_count=e.shnum; m.valid=e.header_status!=ParseStatus::Malformed; m.diagnostic=e.diagnostics.empty()?"":e.diagnostics.front().message; switch(e.machine){case 3:m.architecture=Architecture::X86;break;case 62:m.architecture=Architecture::X86_64;break;case 40:m.architecture=Architecture::ARM;break;case 183:m.architecture=Architecture::ARM64;break;case 243:m.architecture=e.elf_class==ELFClass::ELF64?Architecture::RISCV64:Architecture::RISCV32;break;default:break;} return m; }
     if (parse_macho(data, m)) return m;
     m.format = BinaryFormat::Raw;
     m.valid = true;
