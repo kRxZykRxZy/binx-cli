@@ -3,6 +3,7 @@
 #include "binx/core/text.hpp"
 #include <cassert>
 #include <string>
+#include <iterator>
 
 int main() {
     {
