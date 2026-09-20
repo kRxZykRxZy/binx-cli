@@ -2,6 +2,14 @@
 
 namespace binx {
 
+bool is_pe_format(BinaryFormat f) {
+    return f == BinaryFormat::PE32 || f == BinaryFormat::PE64;
+}
+
+bool is_elf_format(BinaryFormat f) {
+    return f == BinaryFormat::ELF32 || f == BinaryFormat::ELF64;
+}
+
 bool is_pe_command(std::string_view c) {
     return c == "inspect" || c == "sections" || c == "imports" ||
            c == "exports" || c == "resources" || c == "relocations";
