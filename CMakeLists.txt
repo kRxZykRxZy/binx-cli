@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(binx VERSION 0.5.0 LANGUAGES CXX)
+project(binx VERSION 0.6.0 LANGUAGES CXX)
 include(CTest)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,6 +19,7 @@ add_executable(binx
     src/analysis/byte_analysis.cpp
     src/cli/analysis_output.cpp
     src/analysis/dependencies.cpp
+    src/analysis/disassembly.cpp
     src/cli/dependency_output.cpp
 )
 target_include_directories(binx PRIVATE include)
@@ -46,6 +47,7 @@ if(BUILD_TESTING)
         src/hashing/hasher.cpp
         src/analysis/byte_analysis.cpp
         src/analysis/dependencies.cpp
+        src/analysis/disassembly.cpp
     )
     target_include_directories(binx_tests PRIVATE include)
     if(MSVC)

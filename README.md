@@ -6,7 +6,7 @@ The CLI command is binx.
 
 ## Current release
 
-v0.5.0 — Dependency Analysis
+v0.6.0 — Disassembly
 
 v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recursive resolution and dependency graphs.
 

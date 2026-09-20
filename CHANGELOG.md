@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.0 - Disassembly
+
+- Added built-in offline x86/x86-64 disassembly.
+- Added disasm/disassemble commands, entry-point mode, limits, branch targets and JSON output.
+- Added disassembly unit coverage.
+
 All notable BinX changes are documented here.
 
 ## v0.5.0 - Dependency Analysis
