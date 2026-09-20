@@ -4,6 +4,7 @@ project(binx VERSION 1.0.0 LANGUAGES CXX)
 
 include(CTest)
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -115,6 +116,22 @@ install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(EXPORT BinXTargets
     FILE BinXTargets.cmake
     NAMESPACE BinX::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BinX
+)
+
+configure_package_config_file(
+    cmake/BinXConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/BinXConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BinX
+)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/BinXConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/BinXConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/BinXConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/BinX
 )
 
