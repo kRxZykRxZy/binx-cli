@@ -37,6 +37,7 @@ endif()
 if(BUILD_TESTING)
     add_executable(binx_tests
         tests/test_core.cpp
+        src/core/binary.cpp
         src/core/byte_reader.cpp
         src/formats/detect.cpp
         src/formats/pe.cpp
