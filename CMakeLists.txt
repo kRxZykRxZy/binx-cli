@@ -22,6 +22,7 @@ add_executable(binx
     src/analysis/disassembly.cpp
     src/analysis/symbols.cpp
     src/analysis/diff.cpp
+    src/analysis/crash.cpp
     src/cli/dependency_output.cpp
 )
 target_include_directories(binx PRIVATE include)
