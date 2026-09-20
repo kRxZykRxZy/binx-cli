@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <sstream>
 namespace binx {
 namespace {
@@ -11,10 +10,8 @@ using B=std::span<const std::byte>;
 std::uint16_t u16(B b,std::size_t o){return o+2<=b.size()?static_cast<std::uint16_t>(std::to_integer<unsigned char>(b[o])|(std::to_integer<unsigned char>(b[o+1])<<8)):0;}
 std::uint32_t u32(B b,std::size_t o){std::uint32_t v=0;for(int i=0;i<4&&o+static_cast<std::size_t>(i)<b.size();++i)v|=std::uint32_t(std::to_integer<unsigned char>(b[o+i]))<<(8*i);return v;}
 std::uint64_t u64(B b,std::size_t o){std::uint64_t v=0;for(int i=0;i<8&&o+static_cast<std::size_t>(i)<b.size();++i)v|=std::uint64_t(std::to_integer<unsigned char>(b[o+i]))<<(8*i);return v;}
-std::string ascii(B b,std::size_t o,std::size_t n){std::string s;for(std::size_t i=0;i<n&&o+i<b.size();++i){auto c=std::to_integer<unsigned char>(b[o+i]);if(c==0)break;s.push_back(c>=32&&c<127?static_cast<char>(c):'?');}return s;}
 bool range(B b,std::uint64_t o,std::uint64_t n){return o<=b.size()&&n<=b.size()-o;}
 std::string minidump_string(B b,std::uint32_t rva){if(!range(b,rva,4))return {};auto chars=u32(b,rva);auto bytes=std::uint64_t(chars)*2;if(!range(b,std::uint64_t(rva)+4,bytes))return {};std::string s;for(std::uint32_t i=0;i<chars;++i){auto c=u16(b,rva+4+std::size_t(i)*2);s.push_back(c<128?static_cast<char>(c):'?');}return s;}
-Architecture arch_from_pe_machine(std::uint16_t m){switch(m){case 0x14c:return Architecture::X86;case 0x8664:return Architecture::X86_64;case 0x1c0:return Architecture::ARM;case 0xaa64:return Architecture::ARM64;default:return Architecture::Unknown;}}
 Architecture arch_from_elf_machine(std::uint16_t m){switch(m){case 3:return Architecture::X86;case 62:return Architecture::X86_64;case 40:return Architecture::ARM;case 183:return Architecture::ARM64;case 243:return Architecture::RISCV64;default:return Architecture::Unknown;}}
 bool note_align_ok(std::uint64_t x){return x<=0x10000000ull;}
 void parse_minidump(B b,CrashReport&r){
@@ -46,7 +43,6 @@ Result<CrashReport> analyze_crash_dump(const BinaryFile&file){
  if(b.size()>=4&&b[0]==std::byte{'M'}&&b[1]==std::byte{'D'}&&b[2]==std::byte{'M'}&&b[3]==std::byte{'P'}){r.format=CrashDumpFormat::WindowsMinidump;parse_minidump(b,r);}
  else if(b.size()>=20&&b[0]==std::byte{0x7f}&&b[1]==std::byte{'E'}&&b[2]==std::byte{'L'}&&b[3]==std::byte{'F'}&&u16(b,16)==4){r.format=CrashDumpFormat::ELFCore;parse_elf_core(b,r);}
  else return Error{ErrorCode::UnsupportedFormat,"input is not a supported Windows minidump or ELF core dump"};
- if(r.architecture==Architecture::Unknown&&r.format==CrashDumpFormat::ELFCore)r.architecture=Architecture::Unknown;
  r.architecture_name=architecture_name(r.architecture);
  if(r.thread_count==0)r.thread_count=static_cast<std::uint32_t>(r.threads.size());
  if(r.module_count==0)r.module_count=static_cast<std::uint32_t>(r.modules.size());
