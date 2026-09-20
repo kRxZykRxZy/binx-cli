@@ -1,4 +1,5 @@
 #include "binx/analysis/diff.hpp"
+#include "binx/core/text.hpp"
 #include "binx/formats/elf.hpp"
 #include "binx/formats/pe.hpp"
 #include <algorithm>
@@ -7,8 +8,7 @@
 #include <unordered_map>
 namespace binx {
 namespace {
-std::string esc(const std::string&s){std::string o;for(char c:s){unsigned char u=static_cast<unsigned char>(c);if(c=='"')o+="\\\"";else if(c=='\\')o+="\\\\\\";else if(u<0x20){o+=' ';}else o+=c;}return o;}
-std::string hx(std::uint64_t v){std::ostringstream o;o<<"0x"<<std::hex<<std::uppercase<<v;return o.str();}
+std::string hx(std::uint64_t v){return hex_u64(v);}
 struct Sec {std::string name;std::uint64_t off=0,size=0,vsize=0;std::string kind;};
 std::vector<Sec> secs(const BinaryFile&f){
  std::vector<Sec> r; auto fmt=f.metadata().format;
@@ -36,11 +36,11 @@ Result<SizeReport> analyze_size(const BinaryFile&f){
  return r;
 }
 std::string format_binary_diff(const BinaryDiff&d,const BinaryFile&a,const BinaryFile&b,bool json){
- std::ostringstream o;if(json){o<<"{\n  \"schema_version\":6,\n  \"old\":\""<<esc(a.path().filename().string())<<"\",\n  \"new\":\""<<esc(b.path().filename().string())<<"\",\n  \"old_size\":"<<d.old_size<<",\n  \"new_size\":"<<d.new_size<<",\n  \"common_size\":"<<d.common_size<<",\n  \"changed_bytes\":"<<d.changed_bytes<<",\n  \"added_bytes\":"<<d.added_bytes<<",\n  \"removed_bytes\":"<<d.removed_bytes<<",\n  \"similarity\":"<<std::fixed<<std::setprecision(6)<<d.similarity<<",\n  \"hunks\":[";for(std::size_t i=0;i<d.hunks.size();++i){if(i)o<<",";auto&h=d.hunks[i];o<<"{\"offset\":\""<<hx(h.offset)<<"\",\"length\":"<<h.length<<"}";}o<<"],\n  \"sections\":[";for(std::size_t i=0;i<d.sections.size();++i){if(i)o<<",";auto&s=d.sections[i];o<<"{\"name\":\""<<esc(s.name)<<"\",\"old_size\":"<<s.old_size<<",\"new_size\":"<<s.new_size<<",\"delta\":"<<s.delta<<",\"changed_bytes\":"<<s.changed_bytes<<",\"added\":"<<(s.added?"true":"false")<<",\"removed\":"<<(s.removed?"true":"false")<<"}";}o<<"]\n}\n";return o.str();}
+ std::ostringstream o;if(json){o<<"{\n  \"schema_version\":6,\n  \"old\":\""<<json_escape(a.path().filename().string())<<"\",\n  \"new\":\""<<json_escape(b.path().filename().string())<<"\",\n  \"old_size\":"<<d.old_size<<",\n  \"new_size\":"<<d.new_size<<",\n  \"common_size\":"<<d.common_size<<",\n  \"changed_bytes\":"<<d.changed_bytes<<",\n  \"added_bytes\":"<<d.added_bytes<<",\n  \"removed_bytes\":"<<d.removed_bytes<<",\n  \"similarity\":"<<std::fixed<<std::setprecision(6)<<d.similarity<<",\n  \"hunks\":[";for(std::size_t i=0;i<d.hunks.size();++i){if(i)o<<",";auto&h=d.hunks[i];o<<"{\"offset\":\""<<hx(h.offset)<<"\",\"length\":"<<h.length<<"}";}o<<"],\n  \"sections\":[";for(std::size_t i=0;i<d.sections.size();++i){if(i)o<<",";auto&s=d.sections[i];o<<"{\"name\":\""<<json_escape(s.name)<<"\",\"old_size\":"<<s.old_size<<",\"new_size\":"<<s.new_size<<",\"delta\":"<<s.delta<<",\"changed_bytes\":"<<s.changed_bytes<<",\"added\":"<<(s.added?"true":"false")<<",\"removed\":"<<(s.removed?"true":"false")<<"}";}o<<"]\n}\n";return o.str();}
  o<<"BINX BINARY DIFF\n\nOLD  "<<a.path().filename().string()<<"  "<<d.old_size<<" bytes\nNEW  "<<b.path().filename().string()<<"  "<<d.new_size<<" bytes\n\nCHANGES\n  Changed bytes: "<<d.changed_bytes<<"\n  Added bytes:   "<<d.added_bytes<<"\n  Removed bytes: "<<d.removed_bytes<<"\n  Similarity:    "<<std::fixed<<std::setprecision(2)<<(d.similarity*100.0)<<"%\n\nHUNKS ("<<d.hunks.size()<<")\n";for(auto&h:d.hunks)o<<"  "<<hx(h.offset)<<"  "<<h.length<<" bytes\n";o<<"\nSECTIONS\n";for(auto&s:d.sections)o<<"  "<<std::left<<std::setw(16)<<s.name<<std::right<<" "<<std::setw(8)<<s.old_size<<" -> "<<std::setw(8)<<s.new_size<<"  delta="<<s.delta<<"  changed="<<s.changed_bytes<<(s.added?"  ADDED":s.removed?"  REMOVED":"")<<"\n";return o.str();
 }
 std::string format_size_report(const SizeReport&r,const BinaryFile&f,bool json){
- std::ostringstream o;if(json){o<<"{\n  \"schema_version\":6,\n  \"file\":\""<<esc(f.path().filename().string())<<"\",\n  \"file_size\":"<<r.file_size<<",\n  \"image_size\":"<<r.image_size<<",\n  \"headers_size\":"<<r.headers_size<<",\n  \"code_size\":"<<r.code_size<<",\n  \"initialized_data\":"<<r.initialized_data<<",\n  \"uninitialized_data\":"<<r.uninitialized_data<<",\n  \"sections\":[";for(std::size_t i=0;i<r.sections.size();++i){if(i)o<<",";auto&s=r.sections[i];o<<"{\"name\":\""<<esc(s.name)<<"\",\"raw_size\":"<<s.raw_size<<",\"virtual_size\":"<<s.virtual_size<<",\"kind\":\""<<s.kind<<"\"}";}o<<"]\n}\n";return o.str();}
+ std::ostringstream o;if(json){o<<"{\n  \"schema_version\":6,\n  \"file\":\""<<json_escape(f.path().filename().string())<<"\",\n  \"file_size\":"<<r.file_size<<",\n  \"image_size\":"<<r.image_size<<",\n  \"headers_size\":"<<r.headers_size<<",\n  \"code_size\":"<<r.code_size<<",\n  \"initialized_data\":"<<r.initialized_data<<",\n  \"uninitialized_data\":"<<r.uninitialized_data<<",\n  \"sections\":[";for(std::size_t i=0;i<r.sections.size();++i){if(i)o<<",";auto&s=r.sections[i];o<<"{\"name\":\""<<json_escape(s.name)<<"\",\"raw_size\":"<<s.raw_size<<",\"virtual_size\":"<<s.virtual_size<<",\"kind\":\""<<s.kind<<"\"}";}o<<"]\n}\n";return o.str();}
  o<<"BINX SIZE REPORT\n\nFILE\n  "<<f.path().filename().string()<<": "<<r.file_size<<" bytes\n  Image size:        "<<r.image_size<<" bytes\n  Headers:           "<<r.headers_size<<" bytes\n  Code:              "<<r.code_size<<" bytes\n  Initialized data:  "<<r.initialized_data<<" bytes\n  Uninitialized:     "<<r.uninitialized_data<<" bytes\n\nSECTIONS\n";for(auto&s:r.sections)o<<"  "<<std::left<<std::setw(16)<<s.name<<std::right<<" raw="<<std::setw(8)<<s.raw_size<<" virtual="<<std::setw(8)<<s.virtual_size<<" "<<s.kind<<"\n";return o.str();
 }
 }
