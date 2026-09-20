@@ -99,7 +99,7 @@ int main(){
  auto corep=std::filesystem::temp_directory_path()/"binx-v09-core";{
   std::vector<std::byte>core(0x300);core[0]=std::byte{0x7f};core[1]=std::byte{'E'};core[2]=std::byte{'L'};core[3]=std::byte{'F'};core[4]=std::byte{2};core[5]=std::byte{1};core[6]=std::byte{1};
   p16(core,16,4);p16(core,18,62);p64(core,32,0x40);p16(core,54,56);p16(core,56,1);p32(core,0x40,4);p32(core,0x44,0);p64(core,0x48,0x100);p64(core,0x60,0x20);
-  p32(core,0x100,4);p32(core,0x104,0);p32(core,0x108,1);p32(core,0x10c,1);p32(core,0x110,1);p32(core,0x114,0x53494749u);p32(core,0x118,11);
+  p32(core,0x100,0);p32(core,0x104,0);p32(core,0x108,1);p32(core,0x10c,0);p32(core,0x110,4);p32(core,0x114,0x53494749u);p32(core,0x118,11);
   std::ofstream efc(corep,std::ios::binary);efc.write(reinterpret_cast<const char*>(core.data()),static_cast<std::streamsize>(core.size()));
  }
  auto cof=BinaryFile::open(corep);assert(cof);auto cor=analyze_crash_dump(cof.value());assert(cor&&cor.value().format==CrashDumpFormat::ELFCore&&cor.value().architecture==Architecture::X86_64&&cor.value().thread_count==1&&cor.value().signal==11);
