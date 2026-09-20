@@ -1,6 +1,7 @@
 #include "binx/analysis/crash.hpp"
 #include "binx/core/text.hpp"
 #include "binx/formats/detect.hpp"
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
