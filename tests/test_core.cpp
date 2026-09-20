@@ -1,6 +1,7 @@
 #include "binx/core/byte_reader.hpp"
 #include "binx/formats/pe.hpp"
 #include "binx/formats/detect.hpp"
+#include "binx/formats/elf.hpp"
 #include "binx/hashing/hasher.hpp"
 #include <cassert>
 #include <cstddef>
@@ -26,8 +27,23 @@ std::vector<std::byte> fixture(){
  return b;
 }
 }
+std::vector<std::byte> elf_fixture(){
+ std::vector<std::byte>b(0x500);
+ b[0]=std::byte{0x7f};b[1]=std::byte{'E'};b[2]=std::byte{'L'};b[3]=std::byte{'F'};b[4]=std::byte{2};b[5]=std::byte{1};b[6]=std::byte{1};
+ p16(b,16,3);p16(b,18,62);p32(b,20,1);p64(b,24,0x400000);p64(b,32,0x40);p64(b,40,0x200);p32(b,48,0);p16(b,52,64);p16(b,54,56);p16(b,56,1);p16(b,58,64);p16(b,60,4);p16(b,62,3);
+ p32(b,0x40,1);p32(b,0x44,5);p64(b,0x48,0);p64(b,0x50,0x400000);p64(b,0x58,0x400000);p64(b,0x60,0x400);p64(b,0x68,0x400);p64(b,0x70,0x1000);
+ b[0x300]=std::byte{0x90};b[0x301]=std::byte{0x90};b[0x302]=std::byte{0xC3};b[0x303]=std::byte{0};
+ put(b,0x320,"");put(b,0x321,".text");put(b,0x327,".shstrtab");put(b,0x332,".symtab");put(b,0x33b,"func");
+ const std::size_t a=0x200+64;
+ p32(b,a+0,1);p32(b,a+4,1);p64(b,a+8,6);p64(b,a+16,0x400000);p64(b,a+24,0x300);p64(b,a+32,4);p32(b,a+40,0);p32(b,a+44,0);p64(b,a+48,16);p64(b,a+56,0);
+ p32(b,a+64+0,7);p32(b,a+64+4,3);p64(b,a+64+8,0);p64(b,a+64+16,0);p64(b,a+64+24,0x320);p64(b,a+64+32,30);p32(b,a+64+40,0);p32(b,a+64+44,0);p64(b,a+64+48,1);p64(b,a+64+56,0);
+ p32(b,a+128+0,17);p32(b,a+128+4,2);p64(b,a+128+8,0);p64(b,a+128+16,0);p64(b,a+128+24,0x380);p64(b,a+128+32,48);p32(b,a+128+40,2);p32(b,a+128+44,1);p64(b,a+128+48,8);p64(b,a+128+56,24);
+ p32(b,0x380,25);b[0x384]=std::byte{0x12};b[0x385]=std::byte{0};p16(b,0x386,1);p64(b,0x388,0x400000);p64(b,0x390,4);
+ return b;
+}
 int main(){
  std::vector<std::byte>d={std::byte{0x78},std::byte{0x56},std::byte{0x34},std::byte{0x12},std::byte{1},std::byte{2}};ByteReader r(d);assert(r.u32_le()==0x12345678u);assert(r.u16_be()==0x0102u);bool threw=false;try{r.u8();}catch(...){threw=true;}assert(threw);
+ auto ef=elf_fixture();auto ei=parse_elf_image(ef);assert(ei);assert(ei.value().elf_class==ELFClass::ELF64&&ei.value().machine==62&&ei.value().entry==0x400000);assert(ei.value().segments.size()==1&&ei.value().sections.size()==4);assert(ei.value().symbols.size()==1&&ei.value().symbols[0].name=="func");auto emd=detect_metadata(ef);assert(emd.format==BinaryFormat::ELF64&&emd.architecture==Architecture::X86_64);
  auto f=fixture();auto md=detect_metadata(f);assert(md.format==BinaryFormat::PE64&&md.architecture==Architecture::X86_64);auto pe=parse_pe(f);assert(pe);const auto&im=pe.value();assert(im.headers.coff.number_of_sections==3&&im.sections.size()==3);assert(im.mapper.rva_to_file_offset(0x1000).value()==0x400);assert(im.headers.entry_point_file_offset&&*im.headers.entry_point_file_offset==0x400);
  assert(im.imports&&im.imports->modules.size()==1&&im.imports->modules[0].symbols.size()==1&&im.imports->modules[0].symbols[0].name&&*im.imports->modules[0].symbols[0].name=="GetProcAddress");
  assert(im.exports&&im.exports->functions.size()==1&&im.exports->functions[0].name&&*im.exports->functions[0].name=="Init");
