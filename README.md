@@ -6,7 +6,7 @@ The CLI command is binx.
 
 ## Current release
 
-v0.9.0 — Offline Crash Analysis
+v0.95.0 — Unified Analysis & Reporting
 
 v0.5 adds unified dependency analysis across PE, ELF and Mach-O, including recursive resolution and dependency graphs.
 
@@ -87,6 +87,8 @@ binx regions app
     binx diff old.bin new.bin
     binx crash crash.dmp
     binx crash core --json
+    binx report app.exe
+    binx report app.exe --json
     binx hash app.exe
 
     binx inspect app.exe --json
@@ -97,7 +99,7 @@ binx regions app
 
 ## Roadmap
 
-v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> **v0.5 dependencies** -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> **v0.8 diff/size** -> v0.9 crash analysis -> v0.95 unified analysis/reporting -> v1.0 complete local toolkit.
+v0.1 Foundation -> v0.2 deep PE -> v0.3 ELF/formats -> v0.4 strings/hex/search -> **v0.5 dependencies** -> v0.6 disassembly -> v0.7 symbols/PDB/DWARF -> **v0.8 diff/size** -> v0.95 unified analysis/reporting -> v1.0 complete local toolkit.
 
 Cloud/API remains post-v1.
 
