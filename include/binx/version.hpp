@@ -1,2 +1,2 @@
 #pragma once
-#define BINX_VERSION "0.95.0"
+#define BINX_VERSION "1.0.0"
